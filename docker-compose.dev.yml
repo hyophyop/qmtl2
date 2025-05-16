@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  neo4j:
+    image: neo4j:5
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  redpanda:
+    image: redpandadata/redpanda:latest
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+      - "9644:9644"  # admin HTTP 포트 외부 노출 (fixture health check용)
+    environment:
+      - REDPANDA_RPC_SERVER_LISTEN_ADDR=0.0.0.0
+      - REDPANDA_SEED_SERVERS=redpanda:33145
+
+  registry:
+    build:
+      context: .
+      dockerfile: registry.Dockerfile
+    depends_on:
+      - neo4j
+      - redis
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password
+      - REDIS_URI=redis://redis:6379
+    ports:
+      - "8000:8000"
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: orchestrator.Dockerfile
+    depends_on:
+      - registry
+      - redpanda
+    environment:
+      - REGISTRY_URI=http://registry:8000
+      - REDPANDA_BROKERS=redpanda:9092
+      - REDIS_URI=redis://redis:6379
+    ports:
+      - "8080:8080"
+
+volumes:
+  neo4j_data:

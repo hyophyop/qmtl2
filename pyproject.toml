@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qmtl"
+version = "0.1.0"
+description = "QMTL - Quantitative Machine Trading Library"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.100.0",
+    "starlette>=0.27.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+    "neo4j>=5.12.0",
+    "httpx>=0.24.0",
+    "redis>=5.0.0",
+    "kafkapy>=0.2.0",  # Kafka client 
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "structlog>=23.1.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.3.1",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "flake8>=6.1.0",
+    "black>=23.3.0",
+    "isort>=5.12.0",
+    "mypy>=1.4.1",
+    "testcontainers>=3.7.0",  # For docker-based integration tests
+    "freezegun>=1.4.0",  # For time freezing in tests
+    "requests>=2.31.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+
+fastapi = "^0.115.0"
+starlette = "^0.46.0"
+httpx = "^0.28.0"

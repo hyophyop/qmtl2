@@ -1,0 +1,635 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.21, pytest-8.3.5, pluggy-1.5.0 -- /Users/munseungjin/workspace/research/qmtl2/.venv/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.9.21', 'Platform': 'macOS-15.4.1-arm64-arm-64bit', 'Packages': {'pytest': '8.3.5', 'pluggy': '1.5.0'}, 'Plugins': {'anyio': '4.9.0', 'html': '4.1.1', 'metadata': '3.1.1', 'asyncio': '0.26.0', 'cov': '6.1.1'}, 'JAVA_HOME': '/Users/munseungjin/Library/Java/JavaVirtualMachines/openjdk-18.0.1.1/Contents/Home'}
+rootdir: /Users/munseungjin/workspace/research/qmtl2
+configfile: pyproject.toml
+plugins: anyio-4.9.0, html-4.1.1, metadata-3.1.1, asyncio-0.26.0, cov-6.1.1
+asyncio: mode=strict, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items
+
+tests/e2e/test_workflow.py::test_e2e_registry_orchestrator PASSED        [ 25%]
+tests/e2e/test_workflow.py::test_e2e_full_workflow PASSED                [ 50%]
+tests/e2e/test_workflow.py::test_e2e_multi_strategy_environments FAILED  [ 75%]
+
+=================================== FAILURES ===================================
+_____________________ test_e2e_multi_strategy_environments _____________________
+
+base_urls = {'orchestrator': 'http://localhost:8080', 'registry': 'http://localhost:8000'}
+
+    def test_e2e_multi_strategy_environments(base_urls):
+        """
+        다중 전략 및 환경 테스트
+    
+        여러 전략을 각각 다른 환경(development, production)에 배포하고,
+        환경별 독립적인 실행 및 결과 검증, 전략 간 격리를 확인합니다.
+        """
+        logger.info("다중 전략 및 환경 테스트 시작")
+    
+        # 서비스 URL 설정
+        registry_url = base_urls["registry"]
+        orchestrator_url = base_urls["orchestrator"]
+    
+        # 2. 첫 번째 전략 코드 (development 환경용)
+        strategy1_code = """
+    from qmtl.models.decorators import node
+    class DevStrategy:
+        @node(tags=["RAW"])
+        def get_data(self):
+            return {"value": 10}  # development 환경 특화 값
+    
+        @node(tags=["FEATURE"])
+        def calculate_feature(self, get_data):
+            return {"value": get_data["value"] * 3}  # 특화된 계산식
+    
+        @node(tags=["SIGNAL"])
+        def generate_signal(self, calculate_feature):
+            return {"signal": calculate_feature["value"] > 20, "env": "development"}
+    """
+    
+        # 3. 두 번째 전략 코드 (production 환경용)
+        strategy2_code = """
+    from qmtl.models.decorators import node
+    class ProdStrategy:
+        @node(tags=["RAW"])
+        def get_data(self):
+            return {"value": 100}  # production 환경 특화 값
+    
+        @node(tags=["FEATURE"])
+        def calculate_feature(self, get_data):
+            return {"value": get_data["value"] * 1.5}  # 특화된 계산식
+    
+        @node(tags=["SIGNAL"])
+        def generate_signal(self, calculate_feature):
+            return {"signal": calculate_feature["value"] > 120, "env": "production"}
+    """
+    
+        # 4. 첫 번째 전략 제출 (development)
+        logger.info("Development 환경용 전략 제출 중...")
+        try:
+            # metadata 필드 제거
+            submit_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies",
+                data=json.dumps({"strategy_code": strategy1_code}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert submit_resp1.status_code == 200, f"Development 전략 제출 실패: {submit_resp1.status_code} - {submit_resp1.text}\n응답: {submit_resp1.text}"
+            version_id1 = submit_resp1.json()["version_id"]
+            logger.info(f"Development 전략 제출 성공! 버전 ID: {version_id1}")
+        except Exception as e:
+            logger.error(f"Development 전략 제출 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 제출 실패: {str(e)}")
+    
+        # 5. 두 번째 전략 제출 (production)
+        logger.info("Production 환경용 전략 제출 중...")
+        try:
+            # metadata 필드 제거
+            submit_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies",
+                data=json.dumps({"strategy_code": strategy2_code}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert submit_resp2.status_code == 200, f"Production 전략 제출 실패: {submit_resp2.status_code} - {submit_resp2.text}\n응답: {submit_resp2.text}"
+            version_id2 = submit_resp2.json()["version_id"]
+            logger.info(f"Production 전략 제출 성공! 버전 ID: {version_id2}")
+        except Exception as e:
+            logger.error(f"Production 전략 제출 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 제출 실패: {str(e)}")
+    
+        # 6. 첫 번째 전략 development 환경에 활성화
+        logger.info("Development 전략 활성화 중...")
+        try:
+            activate_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies/{version_id1}/activate",
+                data=json.dumps({"environment": "development"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert activate_resp1.status_code == 200, f"Development 전략 활성화 실패: {activate_resp1.status_code} - {activate_resp1.text}\n응답: {activate_resp1.text}"
+            assert activate_resp1.json()["environment"] == "development", f"잘못된 환경으로 활성화됨\n응답: {activate_resp1.json()}"
+            logger.info("Development 전략 활성화 성공!")
+        except Exception as e:
+            logger.error(f"Development 전략 활성화 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 활성화 실패: {str(e)}")
+    
+        # 7. 두 번째 전략 production 환경에 활성화
+        logger.info("Production 전략 활성화 중...")
+        try:
+            activate_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies/{version_id2}/activate",
+                data=json.dumps({"environment": "production"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert activate_resp2.status_code == 200, f"Production 전략 활성화 실패: {activate_resp2.status_code} - {activate_resp2.text}\n응답: {activate_resp2.text}"
+            assert activate_resp2.json()["environment"] == "production", f"잘못된 환경으로 활성화됨\n응답: {activate_resp2.json()}"
+            logger.info("Production 전략 활성화 성공!")
+        except Exception as e:
+            logger.error(f"Production 전략 활성화 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 활성화 실패: {str(e)}")
+    
+        # 8. development 환경에서 첫 번째 전략 실행
+        logger.info("Development 환경에서 전략 실행 중...")
+        try:
+            trigger_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/trigger",
+                data=json.dumps({"strategy_version_id": version_id1, "environment": "development"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert trigger_resp1.status_code == 200, f"Development 전략 실행 트리거 실패: {trigger_resp1.status_code} - {trigger_resp1.text}\n응답: {trigger_resp1.text}"
+            pipeline_id1 = trigger_resp1.json()["execution_id"]
+            logger.info(f"Development 전략 실행 트리거 성공! 실행 ID: {pipeline_id1}")
+        except Exception as e:
+            logger.error(f"Development 전략 실행 트리거 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 실행 트리거 실패: {str(e)}")
+    
+        # 9. production 환경에서 두 번째 전략 실행
+        logger.info("Production 환경에서 전략 실행 중...")
+        try:
+            trigger_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/trigger",
+                data=json.dumps({"strategy_version_id": version_id2, "environment": "production"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert trigger_resp2.status_code == 200, f"Production 전략 실행 트리거 실패: {trigger_resp2.status_code} - {trigger_resp2.text}\n응답: {trigger_resp2.text}"
+            pipeline_id2 = trigger_resp2.json()["execution_id"]
+            logger.info(f"Production 전략 실행 트리거 성공! 실행 ID: {pipeline_id2}")
+        except Exception as e:
+            logger.error(f"Production 전략 실행 트리거 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 실행 트리거 실패: {str(e)}")
+    
+        # 10. 첫 번째 전략 실행 결과 확인
+        logger.info("Development 전략 실행 결과 대기 중...")
+        for attempt in range(POLL_MAX_ATTEMPTS):
+            try:
+                status_resp1 = requests.get(
+                    f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id1}/status",
+                    timeout=5
+                )
+                assert status_resp1.status_code == 200, f"Development 파이프라인 상태 조회 실패: {status_resp1.status_code} - {status_resp1.text}\n응답: {status_resp1.text}"
+                status1 = status_resp1.json()
+                logger.info(f"[{attempt+1}/{POLL_MAX_ATTEMPTS}] Development 파이프라인 상태: {status1.get('status', 'UNKNOWN')}")
+                if status1.get("status") == "COMPLETED":
+                    assert "result" in status1, f"Development 파이프라인 결과가 없습니다.\nstatus1: {status1}"
+                    signal_node = None
+                    for node_id, node_result in status1["result"].items():
+                        if "signal" in node_result and "env" in node_result:
+                            signal_node = node_result
+                            break
+                    assert signal_node is not None, f"Development 파이프라인 결과에서 signal 노드를 찾을 수 없습니다.\n전체 결과: {status1}"
+                    assert signal_node["env"] == "development", f"잘못된 환경 결과: {signal_node['env']}\nsignal_node: {signal_node}"
+                    logger.info("Development 파이프라인 실행 완료 및 결과 검증 성공!")
+                    break
+                elif status1.get("status") == "FAILED":
+                    logger.error(f"Development 파이프라인 실행 실패: {status1.get('error', 'Unknown error')}")
+                    pytest.fail(f"Development 파이프라인 실행 실패: {status1.get('error', 'Unknown error')}")
+                logger.info(f"{POLL_DELAY_SEC}초 후 재시도...")
+                time.sleep(POLL_DELAY_SEC)
+            except Exception as e:
+                logger.error(f"Development 파이프라인 상태 조회 중 오류 발생: {str(e)}")
+                time.sleep(POLL_DELAY_SEC)
+        else:
+            logger.error("Development 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+            # 상태 전체를 로그에 남김
+            final_status_resp1 = requests.get(
+                f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id1}/status",
+                timeout=5
+            )
+            logger.error(f"최종 Development 파이프라인 상태 조회 응답: {final_status_resp1.status_code} - {final_status_resp1.text}")
+            pytest.fail("Development 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+    
+        # 11. 두 번째 전략 실행 결과 확인
+        logger.info("Production 전략 실행 결과 대기 중...")
+        for attempt in range(POLL_MAX_ATTEMPTS):
+            try:
+                status_resp2 = requests.get(
+                    f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id2}/status",
+                    timeout=5
+                )
+                assert status_resp2.status_code == 200, f"Production 파이프라인 상태 조회 실패: {status_resp2.status_code} - {status_resp2.text}\n응답: {status_resp2.text}"
+                status2 = status_resp2.json()
+                logger.info(f"[{attempt+1}/{POLL_MAX_ATTEMPTS}] Production 파이프라인 상태: {status2.get('status', 'UNKNOWN')}")
+                if status2.get("status") == "COMPLETED":
+                    assert "result" in status2, "Production 파이프라인 결과가 없습니다."
+                    signal_node = None
+                    for node_id, node_result in status2["result"].items():
+                        if "signal" in node_result and "env" in node_result:
+                            signal_node = node_result
+                            break
+                    assert signal_node is not None, "Production 파이프라인 결과에서 signal 노드를 찾을 수 없습니다."
+                    assert signal_node["env"] == "production", f"잘못된 환경 결과: {signal_node['env']}"
+                    logger.info("Production 파이프라인 실행 완료 및 결과 검증 성공!")
+                    break
+                elif status2.get("status") == "FAILED":
+                    logger.error(f"Production 파이프라인 실행 실패: {status2.get('error', 'Unknown error')}")
+                    pytest.fail(f"Production 파이프라인 실행 실패: {status2.get('error', 'Unknown error')}")
+                logger.info(f"{POLL_DELAY_SEC}초 후 재시도...")
+                time.sleep(POLL_DELAY_SEC)
+            except Exception as e:
+                logger.error(f"Production 파이프라인 상태 조회 중 오류 발생: {str(e)}")
+                time.sleep(POLL_DELAY_SEC)
+        else:
+            logger.error("Production 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+            # 상태 전체를 로그에 남김
+            final_status_resp2 = requests.get(
+                f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id2}/status",
+                timeout=5
+            )
+            logger.error(f"최종 Production 파이프라인 상태 조회 응답: {final_status_resp2.status_code} - {final_status_resp2.text}")
+            pytest.fail("Production 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+    
+        # 12. 활성 전략 목록 조회하여 환경별 분리 확인
+        logger.info("활성 전략 목록 조회 중...")
+        try:
+            strategies_resp = requests.get(f"{orchestrator_url}/v1/orchestrator/strategies", timeout=5)
+            assert strategies_resp.status_code == 200, f"전략 목록 조회 실패: {strategies_resp.status_code} - {strategies_resp.text}"
+    
+            active_strategies = strategies_resp.json()["strategies"]
+            logger.info(f"활성 전략 총 {len(active_strategies)}개 조회 성공")
+    
+            # 13. 각 환경별 전략 확인 (환경별 맵 구조 대응)
+            dev_strategies = strategies_resp.json()["strategies"].get("development", [])
+            prod_strategies = strategies_resp.json()["strategies"].get("production", [])
+            logger.info(f"Development 환경 전략: {len(dev_strategies)}개, Production 환경 전략: {len(prod_strategies)}개")
+>           assert any(s["version_id"] == version_id1 for s in dev_strategies), "Development 전략을 찾을 수 없습니다."
+E           AssertionError: Development 전략을 찾을 수 없습니다.
+E           assert False
+E            +  where False = any(<generator object test_e2e_multi_strategy_environments.<locals>.<genexpr> at 0x109f8b7b0>)
+
+tests/e2e/test_workflow.py:389: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+base_urls = {'orchestrator': 'http://localhost:8080', 'registry': 'http://localhost:8000'}
+
+    def test_e2e_multi_strategy_environments(base_urls):
+        """
+        다중 전략 및 환경 테스트
+    
+        여러 전략을 각각 다른 환경(development, production)에 배포하고,
+        환경별 독립적인 실행 및 결과 검증, 전략 간 격리를 확인합니다.
+        """
+        logger.info("다중 전략 및 환경 테스트 시작")
+    
+        # 서비스 URL 설정
+        registry_url = base_urls["registry"]
+        orchestrator_url = base_urls["orchestrator"]
+    
+        # 2. 첫 번째 전략 코드 (development 환경용)
+        strategy1_code = """
+    from qmtl.models.decorators import node
+    class DevStrategy:
+        @node(tags=["RAW"])
+        def get_data(self):
+            return {"value": 10}  # development 환경 특화 값
+    
+        @node(tags=["FEATURE"])
+        def calculate_feature(self, get_data):
+            return {"value": get_data["value"] * 3}  # 특화된 계산식
+    
+        @node(tags=["SIGNAL"])
+        def generate_signal(self, calculate_feature):
+            return {"signal": calculate_feature["value"] > 20, "env": "development"}
+    """
+    
+        # 3. 두 번째 전략 코드 (production 환경용)
+        strategy2_code = """
+    from qmtl.models.decorators import node
+    class ProdStrategy:
+        @node(tags=["RAW"])
+        def get_data(self):
+            return {"value": 100}  # production 환경 특화 값
+    
+        @node(tags=["FEATURE"])
+        def calculate_feature(self, get_data):
+            return {"value": get_data["value"] * 1.5}  # 특화된 계산식
+    
+        @node(tags=["SIGNAL"])
+        def generate_signal(self, calculate_feature):
+            return {"signal": calculate_feature["value"] > 120, "env": "production"}
+    """
+    
+        # 4. 첫 번째 전략 제출 (development)
+        logger.info("Development 환경용 전략 제출 중...")
+        try:
+            # metadata 필드 제거
+            submit_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies",
+                data=json.dumps({"strategy_code": strategy1_code}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert submit_resp1.status_code == 200, f"Development 전략 제출 실패: {submit_resp1.status_code} - {submit_resp1.text}\n응답: {submit_resp1.text}"
+            version_id1 = submit_resp1.json()["version_id"]
+            logger.info(f"Development 전략 제출 성공! 버전 ID: {version_id1}")
+        except Exception as e:
+            logger.error(f"Development 전략 제출 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 제출 실패: {str(e)}")
+    
+        # 5. 두 번째 전략 제출 (production)
+        logger.info("Production 환경용 전략 제출 중...")
+        try:
+            # metadata 필드 제거
+            submit_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies",
+                data=json.dumps({"strategy_code": strategy2_code}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert submit_resp2.status_code == 200, f"Production 전략 제출 실패: {submit_resp2.status_code} - {submit_resp2.text}\n응답: {submit_resp2.text}"
+            version_id2 = submit_resp2.json()["version_id"]
+            logger.info(f"Production 전략 제출 성공! 버전 ID: {version_id2}")
+        except Exception as e:
+            logger.error(f"Production 전략 제출 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 제출 실패: {str(e)}")
+    
+        # 6. 첫 번째 전략 development 환경에 활성화
+        logger.info("Development 전략 활성화 중...")
+        try:
+            activate_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies/{version_id1}/activate",
+                data=json.dumps({"environment": "development"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert activate_resp1.status_code == 200, f"Development 전략 활성화 실패: {activate_resp1.status_code} - {activate_resp1.text}\n응답: {activate_resp1.text}"
+            assert activate_resp1.json()["environment"] == "development", f"잘못된 환경으로 활성화됨\n응답: {activate_resp1.json()}"
+            logger.info("Development 전략 활성화 성공!")
+        except Exception as e:
+            logger.error(f"Development 전략 활성화 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 활성화 실패: {str(e)}")
+    
+        # 7. 두 번째 전략 production 환경에 활성화
+        logger.info("Production 전략 활성화 중...")
+        try:
+            activate_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/strategies/{version_id2}/activate",
+                data=json.dumps({"environment": "production"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert activate_resp2.status_code == 200, f"Production 전략 활성화 실패: {activate_resp2.status_code} - {activate_resp2.text}\n응답: {activate_resp2.text}"
+            assert activate_resp2.json()["environment"] == "production", f"잘못된 환경으로 활성화됨\n응답: {activate_resp2.json()}"
+            logger.info("Production 전략 활성화 성공!")
+        except Exception as e:
+            logger.error(f"Production 전략 활성화 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 활성화 실패: {str(e)}")
+    
+        # 8. development 환경에서 첫 번째 전략 실행
+        logger.info("Development 환경에서 전략 실행 중...")
+        try:
+            trigger_resp1 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/trigger",
+                data=json.dumps({"strategy_version_id": version_id1, "environment": "development"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert trigger_resp1.status_code == 200, f"Development 전략 실행 트리거 실패: {trigger_resp1.status_code} - {trigger_resp1.text}\n응답: {trigger_resp1.text}"
+            pipeline_id1 = trigger_resp1.json()["execution_id"]
+            logger.info(f"Development 전략 실행 트리거 성공! 실행 ID: {pipeline_id1}")
+        except Exception as e:
+            logger.error(f"Development 전략 실행 트리거 중 오류 발생: {str(e)}")
+            pytest.fail(f"Development 전략 실행 트리거 실패: {str(e)}")
+    
+        # 9. production 환경에서 두 번째 전략 실행
+        logger.info("Production 환경에서 전략 실행 중...")
+        try:
+            trigger_resp2 = requests.post(
+                f"{orchestrator_url}/v1/orchestrator/trigger",
+                data=json.dumps({"strategy_version_id": version_id2, "environment": "production"}),
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
+            assert trigger_resp2.status_code == 200, f"Production 전략 실행 트리거 실패: {trigger_resp2.status_code} - {trigger_resp2.text}\n응답: {trigger_resp2.text}"
+            pipeline_id2 = trigger_resp2.json()["execution_id"]
+            logger.info(f"Production 전략 실행 트리거 성공! 실행 ID: {pipeline_id2}")
+        except Exception as e:
+            logger.error(f"Production 전략 실행 트리거 중 오류 발생: {str(e)}")
+            pytest.fail(f"Production 전략 실행 트리거 실패: {str(e)}")
+    
+        # 10. 첫 번째 전략 실행 결과 확인
+        logger.info("Development 전략 실행 결과 대기 중...")
+        for attempt in range(POLL_MAX_ATTEMPTS):
+            try:
+                status_resp1 = requests.get(
+                    f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id1}/status",
+                    timeout=5
+                )
+                assert status_resp1.status_code == 200, f"Development 파이프라인 상태 조회 실패: {status_resp1.status_code} - {status_resp1.text}\n응답: {status_resp1.text}"
+                status1 = status_resp1.json()
+                logger.info(f"[{attempt+1}/{POLL_MAX_ATTEMPTS}] Development 파이프라인 상태: {status1.get('status', 'UNKNOWN')}")
+                if status1.get("status") == "COMPLETED":
+                    assert "result" in status1, f"Development 파이프라인 결과가 없습니다.\nstatus1: {status1}"
+                    signal_node = None
+                    for node_id, node_result in status1["result"].items():
+                        if "signal" in node_result and "env" in node_result:
+                            signal_node = node_result
+                            break
+                    assert signal_node is not None, f"Development 파이프라인 결과에서 signal 노드를 찾을 수 없습니다.\n전체 결과: {status1}"
+                    assert signal_node["env"] == "development", f"잘못된 환경 결과: {signal_node['env']}\nsignal_node: {signal_node}"
+                    logger.info("Development 파이프라인 실행 완료 및 결과 검증 성공!")
+                    break
+                elif status1.get("status") == "FAILED":
+                    logger.error(f"Development 파이프라인 실행 실패: {status1.get('error', 'Unknown error')}")
+                    pytest.fail(f"Development 파이프라인 실행 실패: {status1.get('error', 'Unknown error')}")
+                logger.info(f"{POLL_DELAY_SEC}초 후 재시도...")
+                time.sleep(POLL_DELAY_SEC)
+            except Exception as e:
+                logger.error(f"Development 파이프라인 상태 조회 중 오류 발생: {str(e)}")
+                time.sleep(POLL_DELAY_SEC)
+        else:
+            logger.error("Development 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+            # 상태 전체를 로그에 남김
+            final_status_resp1 = requests.get(
+                f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id1}/status",
+                timeout=5
+            )
+            logger.error(f"최종 Development 파이프라인 상태 조회 응답: {final_status_resp1.status_code} - {final_status_resp1.text}")
+            pytest.fail("Development 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+    
+        # 11. 두 번째 전략 실행 결과 확인
+        logger.info("Production 전략 실행 결과 대기 중...")
+        for attempt in range(POLL_MAX_ATTEMPTS):
+            try:
+                status_resp2 = requests.get(
+                    f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id2}/status",
+                    timeout=5
+                )
+                assert status_resp2.status_code == 200, f"Production 파이프라인 상태 조회 실패: {status_resp2.status_code} - {status_resp2.text}\n응답: {status_resp2.text}"
+                status2 = status_resp2.json()
+                logger.info(f"[{attempt+1}/{POLL_MAX_ATTEMPTS}] Production 파이프라인 상태: {status2.get('status', 'UNKNOWN')}")
+                if status2.get("status") == "COMPLETED":
+                    assert "result" in status2, "Production 파이프라인 결과가 없습니다."
+                    signal_node = None
+                    for node_id, node_result in status2["result"].items():
+                        if "signal" in node_result and "env" in node_result:
+                            signal_node = node_result
+                            break
+                    assert signal_node is not None, "Production 파이프라인 결과에서 signal 노드를 찾을 수 없습니다."
+                    assert signal_node["env"] == "production", f"잘못된 환경 결과: {signal_node['env']}"
+                    logger.info("Production 파이프라인 실행 완료 및 결과 검증 성공!")
+                    break
+                elif status2.get("status") == "FAILED":
+                    logger.error(f"Production 파이프라인 실행 실패: {status2.get('error', 'Unknown error')}")
+                    pytest.fail(f"Production 파이프라인 실행 실패: {status2.get('error', 'Unknown error')}")
+                logger.info(f"{POLL_DELAY_SEC}초 후 재시도...")
+                time.sleep(POLL_DELAY_SEC)
+            except Exception as e:
+                logger.error(f"Production 파이프라인 상태 조회 중 오류 발생: {str(e)}")
+                time.sleep(POLL_DELAY_SEC)
+        else:
+            logger.error("Production 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+            # 상태 전체를 로그에 남김
+            final_status_resp2 = requests.get(
+                f"{orchestrator_url}/v1/orchestrator/pipeline/{pipeline_id2}/status",
+                timeout=5
+            )
+            logger.error(f"최종 Production 파이프라인 상태 조회 응답: {final_status_resp2.status_code} - {final_status_resp2.text}")
+            pytest.fail("Production 파이프라인이 지정된 시간 내에 완료되지 않았습니다.")
+    
+        # 12. 활성 전략 목록 조회하여 환경별 분리 확인
+        logger.info("활성 전략 목록 조회 중...")
+        try:
+            strategies_resp = requests.get(f"{orchestrator_url}/v1/orchestrator/strategies", timeout=5)
+            assert strategies_resp.status_code == 200, f"전략 목록 조회 실패: {strategies_resp.status_code} - {strategies_resp.text}"
+    
+            active_strategies = strategies_resp.json()["strategies"]
+            logger.info(f"활성 전략 총 {len(active_strategies)}개 조회 성공")
+    
+            # 13. 각 환경별 전략 확인 (환경별 맵 구조 대응)
+            dev_strategies = strategies_resp.json()["strategies"].get("development", [])
+            prod_strategies = strategies_resp.json()["strategies"].get("production", [])
+            logger.info(f"Development 환경 전략: {len(dev_strategies)}개, Production 환경 전략: {len(prod_strategies)}개")
+            assert any(s["version_id"] == version_id1 for s in dev_strategies), "Development 전략을 찾을 수 없습니다."
+            assert any(s["version_id"] == version_id2 for s in prod_strategies), "Production 전략을 찾을 수 없습니다."
+            logger.info("환경별 전략 분리 검증 성공!")
+    
+            # 14. Orchestrator 컨테이너 재시작 후에도 상태 유지되는지 검증
+            logger.info("Orchestrator 컨테이너 재시작 중...")
+            import subprocess, time
+            subprocess.run(["docker", "compose", "-f", "docker-compose.dev.yml", "restart", "orchestrator"], check=True)
+            # 재시작 대기 (health check)
+            for _ in range(30):
+                try:
+                    resp = requests.get(f"{orchestrator_url}/", timeout=3)
+                    if resp.status_code in (200, 404):
+                        break
+                except Exception:
+                    time.sleep(1)
+            else:
+                pytest.fail("Orchestrator 재시작 후 health check 실패")
+            # 재시작 후 활성 전략 목록 재조회
+            strategies_resp2 = requests.get(f"{orchestrator_url}/v1/orchestrator/strategies", timeout=5)
+            assert strategies_resp2.status_code == 200, f"재시작 후 전략 목록 조회 실패: {strategies_resp2.status_code} - {strategies_resp2.text}"
+            dev_strategies2 = strategies_resp2.json()["strategies"].get("development", [])
+            prod_strategies2 = strategies_resp2.json()["strategies"].get("production", [])
+            assert any(s["version_id"] == version_id1 for s in dev_strategies2), "[재시작 후] Development 전략을 찾을 수 없습니다."
+            assert any(s["version_id"] == version_id2 for s in prod_strategies2), "[재시작 후] Production 전략을 찾을 수 없습니다."
+            logger.info("[재시작 후] 환경별 전략 상태 영속성 검증 성공!")
+        except Exception as e:
+            logger.error(f"전략 목록 조회 중 오류 발생: {str(e)}")
+>           pytest.fail(f"전략 목록 조회 실패: {str(e)}")
+E           Failed: 전략 목록 조회 실패: Development 전략을 찾을 수 없습니다.
+E           assert False
+E            +  where False = any(<generator object test_e2e_multi_strategy_environments.<locals>.<genexpr> at 0x109f8b7b0>)
+
+tests/e2e/test_workflow.py:417: Failed
+---------------------------- Captured stderr setup -----------------------------
+INFO - Starting test with enhanced mock validation
+2025-05-11 01:41:14,721 - mock_fixtures - INFO - Starting test with enhanced mock validation
+------------------------------ Captured log setup ------------------------------
+INFO     mock_fixtures:conftest.py:296 Starting test with enhanced mock validation
+----------------------------- Captured stderr call -----------------------------
+2025-05-11 01:41:14,721 - e2e_test.workflow - INFO - 다중 전략 및 환경 테스트 시작
+2025-05-11 01:41:14,721 - e2e_test.workflow - INFO - Development 환경용 전략 제출 중...
+2025-05-11 01:41:14,733 - e2e_test.workflow - INFO - Development 전략 제출 성공! 버전 ID: d023ec2b719bb737_1746895274
+2025-05-11 01:41:14,734 - e2e_test.workflow - INFO - Production 환경용 전략 제출 중...
+2025-05-11 01:41:14,745 - e2e_test.workflow - INFO - Production 전략 제출 성공! 버전 ID: d72c92f883be18ee_1746895274
+2025-05-11 01:41:14,745 - e2e_test.workflow - INFO - Development 전략 활성화 중...
+2025-05-11 01:41:14,754 - e2e_test.workflow - INFO - Development 전략 활성화 성공!
+2025-05-11 01:41:14,754 - e2e_test.workflow - INFO - Production 전략 활성화 중...
+2025-05-11 01:41:14,762 - e2e_test.workflow - INFO - Production 전략 활성화 성공!
+2025-05-11 01:41:14,762 - e2e_test.workflow - INFO - Development 환경에서 전략 실행 중...
+2025-05-11 01:41:14,768 - e2e_test.workflow - INFO - Development 전략 실행 트리거 성공! 실행 ID: exec-67fd4677
+2025-05-11 01:41:14,768 - e2e_test.workflow - INFO - Production 환경에서 전략 실행 중...
+2025-05-11 01:41:14,774 - e2e_test.workflow - INFO - Production 전략 실행 트리거 성공! 실행 ID: exec-88e9d52c
+2025-05-11 01:41:14,774 - e2e_test.workflow - INFO - Development 전략 실행 결과 대기 중...
+2025-05-11 01:41:14,780 - e2e_test.workflow - INFO - [1/30] Development 파이프라인 상태: COMPLETED
+2025-05-11 01:41:14,780 - e2e_test.workflow - INFO - Development 파이프라인 실행 완료 및 결과 검증 성공!
+2025-05-11 01:41:14,780 - e2e_test.workflow - INFO - Production 전략 실행 결과 대기 중...
+2025-05-11 01:41:14,787 - e2e_test.workflow - INFO - [1/30] Production 파이프라인 상태: COMPLETED
+2025-05-11 01:41:14,787 - e2e_test.workflow - INFO - Production 파이프라인 실행 완료 및 결과 검증 성공!
+2025-05-11 01:41:14,787 - e2e_test.workflow - INFO - 활성 전략 목록 조회 중...
+2025-05-11 01:41:14,790 - e2e_test.workflow - INFO - 활성 전략 총 3개 조회 성공
+2025-05-11 01:41:14,790 - e2e_test.workflow - INFO - Development 환경 전략: 0개, Production 환경 전략: 0개
+2025-05-11 01:41:14,791 - e2e_test.workflow - ERROR - 전략 목록 조회 중 오류 발생: Development 전략을 찾을 수 없습니다.
+assert False
+ +  where False = any(<generator object test_e2e_multi_strategy_environments.<locals>.<genexpr> at 0x109f8b7b0>)
+------------------------------ Captured log call -------------------------------
+INFO     e2e_test.workflow:test_workflow.py:158 다중 전략 및 환경 테스트 시작
+INFO     e2e_test.workflow:test_workflow.py:199 Development 환경용 전략 제출 중...
+INFO     e2e_test.workflow:test_workflow.py:210 Development 전략 제출 성공! 버전 ID: d023ec2b719bb737_1746895274
+INFO     e2e_test.workflow:test_workflow.py:216 Production 환경용 전략 제출 중...
+INFO     e2e_test.workflow:test_workflow.py:227 Production 전략 제출 성공! 버전 ID: d72c92f883be18ee_1746895274
+INFO     e2e_test.workflow:test_workflow.py:233 Development 전략 활성화 중...
+INFO     e2e_test.workflow:test_workflow.py:243 Development 전략 활성화 성공!
+INFO     e2e_test.workflow:test_workflow.py:249 Production 전략 활성화 중...
+INFO     e2e_test.workflow:test_workflow.py:259 Production 전략 활성화 성공!
+INFO     e2e_test.workflow:test_workflow.py:265 Development 환경에서 전략 실행 중...
+INFO     e2e_test.workflow:test_workflow.py:275 Development 전략 실행 트리거 성공! 실행 ID: exec-67fd4677
+INFO     e2e_test.workflow:test_workflow.py:281 Production 환경에서 전략 실행 중...
+INFO     e2e_test.workflow:test_workflow.py:291 Production 전략 실행 트리거 성공! 실행 ID: exec-88e9d52c
+INFO     e2e_test.workflow:test_workflow.py:297 Development 전략 실행 결과 대기 중...
+INFO     e2e_test.workflow:test_workflow.py:306 [1/30] Development 파이프라인 상태: COMPLETED
+INFO     e2e_test.workflow:test_workflow.py:316 Development 파이프라인 실행 완료 및 결과 검증 성공!
+INFO     e2e_test.workflow:test_workflow.py:337 Production 전략 실행 결과 대기 중...
+INFO     e2e_test.workflow:test_workflow.py:346 [1/30] Production 파이프라인 상태: COMPLETED
+INFO     e2e_test.workflow:test_workflow.py:356 Production 파이프라인 실행 완료 및 결과 검증 성공!
+INFO     e2e_test.workflow:test_workflow.py:377 활성 전략 목록 조회 중...
+INFO     e2e_test.workflow:test_workflow.py:383 활성 전략 총 3개 조회 성공
+INFO     e2e_test.workflow:test_workflow.py:388 Development 환경 전략: 0개, Production 환경 전략: 0개
+ERROR    e2e_test.workflow:test_workflow.py:416 전략 목록 조회 중 오류 발생: Development 전략을 찾을 수 없습니다.
+assert False
+ +  where False = any(<generator object test_e2e_multi_strategy_environments.<locals>.<genexpr> at 0x109f8b7b0>)
+--------------------------- Captured stdout teardown ---------------------------
+docker-compose -f docker-compose.dev.yml down
+--------------------------- Captured stderr teardown ---------------------------
+INFO - Test completed with enhanced mock validation
+2025-05-11 01:41:14,855 - mock_fixtures - INFO - Test completed with enhanced mock validation
+2025-05-11 01:41:14,855 - e2e_test - INFO - Docker 컨테이너 정리 중...
+time="2025-05-11T01:41:14+09:00" level=warning msg="/Users/munseungjin/workspace/research/qmtl2/docker-compose.dev.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container qmtl2-orchestrator-1  Stopping
+ Container qmtl2-orchestrator-1  Stopped
+ Container qmtl2-orchestrator-1  Removing
+ Container qmtl2-orchestrator-1  Removed
+ Container qmtl2-registry-1  Stopping
+ Container qmtl2-redpanda-1  Stopping
+ Container qmtl2-registry-1  Stopped
+ Container qmtl2-registry-1  Removing
+ Container qmtl2-registry-1  Removed
+ Container qmtl2-redis-1  Stopping
+ Container qmtl2-neo4j-1  Stopping
+ Container qmtl2-redis-1  Stopped
+ Container qmtl2-redis-1  Removing
+ Container qmtl2-redis-1  Removed
+ Container qmtl2-neo4j-1  Stopped
+ Container qmtl2-neo4j-1  Removing
+ Container qmtl2-neo4j-1  Removed
+ Container qmtl2-redpanda-1  Stopped
+ Container qmtl2-redpanda-1  Removing
+ Container qmtl2-redpanda-1  Removed
+ Network qmtl2_default  Removing
+ Network qmtl2_default  Removed
+2025-05-11 01:41:16,387 - e2e_test - INFO - Docker 컨테이너 정리 완료.
+---------------------------- Captured log teardown -----------------------------
+INFO     mock_fixtures:conftest.py:298 Test completed with enhanced mock validation
+INFO     e2e_test:conftest.py:274 Docker 컨테이너 정리 중...
+INFO     e2e_test:conftest.py:276 Docker 컨테이너 정리 완료.
+=========================== short test summary info ============================
+FAILED tests/e2e/test_workflow.py::test_e2e_multi_strategy_environments - Fai...
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+=================== 1 failed, 2 passed, 4 warnings in 4.38s ====================

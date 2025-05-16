@@ -1,0 +1,439 @@
+# [2025-05-14] (FIXTURE-REGISTRY-ORCH) registry/orchestrator 서비스도 Neo4j/Redis/Redpanda처럼 pytest fixture에서 docker-compose로 직접 기동/정리하는 구조(docker fixture)로 전환 완료
+  - tests/conftest.py의 docker_compose_up_down fixture가 registry/orchestrator/neo4j/redis/redpanda 컨테이너를 일괄 관리하며 health check로 준비 상태를 보장
+  - 모든 E2E/통합 테스트는 해당 fixture 이후에만 FastAPI TestClient(app) 인스턴스를 생성하도록 구조화되어 있음
+  - 환경변수/포트/네트워크 일치, race condition, 연결 실패 등 문제를 원천적으로 차단
+  - Neo4j 환경변수 분리 정책 적용: pytest(호스트)는 bolt://localhost:7687, 컨테이너는 bolt://neo4j:7687만 사용하도록 명확화
+  - 정책/구현/문서화: tests/conftest.py, docs/neo4j_env_policy.md, tests/README.md, 주석 보강
+  - 통합 테스트(test_node_dependency_management)에서 Neo4j 연결 오류(500) 해결 및 정상 통과 확인
+  - tests/README.md, tests/e2e/README.md, docs/developer_guide.md, CHANGELOG.md에 구조 및 사용법 반영
+# [2025-05-13] (MULTI-7) 실시간 모니터링/대시보드/알림 시스템 연동
+  - Registry: 상태 변화 이벤트 발행/구독 서비스(EventPublisher/EventSubscriber), 실시간 이벤트 API 추가
+  - Orchestrator: 이벤트 구독 클라이언트(EventClient) 및 대시보드/알림 연동 샘플 구현
+  - Pydantic v2 스타일 이벤트/상태 모델 정의(models/event.py)
+  - 단위 테스트 및 모킹 기반 검증(tests/unit/models/test_event.py, tests/unit/registry/services/test_event.py, tests/unit/orchestrator/services/test_event_client.py)
+  - FastAPI API 연동(/v1/registry/events/node-status 등)
+  - todo.md → backlog.md, CHANGELOG.md 반영
+# [2025-05-13] (MULTI-5) 콜백/이벤트 훅 기반 노드 생명주기 관리
+- Registry: 노드 실행/정지 신호 콜백 등록/해제/조회/트리거 API 및 도메인 서비스 구현 (`/v1/registry/nodes/{node_id}/callbacks`)
+- Orchestrator: 콜백 등록/해제 요청, 콜백 이벤트 수신 후 노드 실행/정지 신호 처리 구조 초안
+- Pydantic v2 스타일 콜백 모델(models/callback.py) 정의
+- 단위/통합 테스트 및 FastAPI DI/모킹 구조 검증 (tests/integration/test_callback.py)
+- 정책 Node ID(32자리 해시) 기반 일관성 보장, 문서/가이드/테스트/CHANGELOG/todo.md 반영
+
+# [2025-05-13] (MULTI-4) 의존성 기반 동적 스케줄링 및 리소스 최적화
+- Registry: 전체 DAG 구조, 노드 의존성 정보, 실행 가능 노드 목록 제공 API 구현
+    - `/v1/registry/pipelines/{pipeline_id}/dag` (DAG 구조)
+    - `/v1/registry/pipelines/{pipeline_id}/ready-nodes` (ready node 목록)
+    - 서비스/DI/모킹/테스트 일관성 보장
+- Orchestrator: Registry에서 DAG/의존성/상태 정보 조회, 실행 가능한 노드만 선별 실행, 리소스 상황에 따라 우선순위/스케줄링, 비활성 노드 자동 정지/재시작 (별도 이슈)
+- 단위/통합 테스트(mock 기반) 및 FastAPI DI/의존성 주입/모킹 구조 검증
+- todo.md, backlog.md, CHANGELOG.md 반영
+# [2025-05-13] (PIPELINE-1) 글로벌 Pipeline ID 정책 적용 및 일관화
+  - Registry/Orchestrator/SDK/테스트/문서 전체에서 version_id, strategy_id 등 파이프라인 식별자 제거, pipeline_id(32자리 해시)로 일원화
+  - Pipeline ID 생성 정책 및 예시를 architecture.md, nodeID.md, README 등과 일치하도록 반영
+  - 모든 Pydantic 모델, 서비스, API, 테스트(mock 포함)에서 pipeline_id만 사용하도록 리팩터링
+  - 기존 version_id, strategy_id 등 관련 필드/로직/문서/테스트 전수 점검 및 일괄 대체
+  - 테스트(mock 포함)에서 pipeline_id 기반 데이터 흐름/값 사용 보장 및 일관성 검증
+  - 관련 정책/예시/가이드/테스트/주의사항 등 문서화 및 todo.md, backlog.md, CHANGELOG.md 반영
+# [2025-05-11] (E2E-STATE) Orchestrator 활성 전략 등 상태 저장 방식 개선
+  - Redis 기반 환경별 활성 전략 상태 영속화 구현 (ActivationService)
+  - 서비스 초기화 시 Redis에서 상태 복구, 활성화/비활성화 시 Redis에 즉시 반영
+  - E2E 테스트(test_e2e_multi_strategy_environments)에서 orchestrator 컨테이너 재시작 후에도 활성화 상태가 유지되는지 검증
+  - 장애/복구 상황(예: Redis flush, 장애 후 복구)에서 일관성 보장 테스트
+  - 관련 구조/정책을 architecture.md, README, tests/README.md, tests/e2e/README.md에 명시
+  - todo.md → backlog.md, CHANGELOG.md 반영
+# [2025-05-11] (FIXTURE-4) E2E 테스트에서 fixture-1,2,3의 목적에 맞는 session/module scope 분리 및 적용 검증
+  - Redis/Neo4j/Redpanda 등 외부 리소스 컨테이너/연결 fixture가 E2E 테스트에서 일관되게 session/function scope로 분리되어 있음
+  - tests/conftest.py, tests/README.md, tests/e2e/README.md 등에서 fixture의 scope/구조/네이밍/주석이 가이드와 일치함을 확인
+  - E2E 테스트에서 여러 테스트가 동일 리소스를 바라보며, 데이터 일관성/독립성이 fixture 구조로 보장됨
+  - 추가적인 구조 개선/리팩토링 불필요 (테스트/문서/가이드도 최신 상태)
+  - 실제 E2E 테스트 실행 결과, fixture 구조 문제로 인한 데이터 불일치/공유 문제 없음 (환경별 전략 분리 등은 별도 비즈니스 로직 이슈)
+  - 관련 점검 결과를 backlog.md, CHANGELOG.md, tests/README.md, tests/e2e/README.md에 반영
+# [2025-05-10] (FIXTURE-3) redpanda 등 메시지 브로커 컨테이너/연결 fixture 구조 개선 및 통합
+  - redpanda 등 메시지 브로커 컨테이너/연결용 session scope fixture를 conftest.py에 통합
+  - 각 테스트의 상태 초기화(clean)용 function/module scope fixture 별도 정의
+  - E2E/통합 테스트에서는 session fixture만 사용하거나, 필요에 따라 상태 일부만 초기화
+  - 단위/모듈 테스트에서는 clean fixture를 사용해 테스트 독립성 보장
+  - fixture 네이밍 및 docstring 일관성 강화
+  - 테스트/문서/가이드에 fixture 사용 예시 추가
+  - 기존 fixture 사용처 전수 점검 및 리팩토링
+# [2025-05-10] (INTERVAL-5) 로컬 실행 엔진 확장
+  - 인터벌 데이터 관리 기능 통합
+  - 인메모리 캐싱 구현 (Redis 없이 테스트 가능)
+  - 테스트 시나리오 및 단위 테스트 작성
+# [2025-05-10] (FIXTURE-3) redpanda 등 메시지 브로커 컨테이너/연결 fixture 구조 개선 및 통합
+  - redpanda 등 메시지 브로커 컨테이너/연결용 session scope fixture를 conftest.py에 통합
+  - 각 테스트의 상태 초기화(clean)용 function/module scope fixture 별도 정의
+  - E2E/통합 테스트에서는 session fixture만 사용하거나, 필요에 따라 상태 일부만 초기화
+  - 단위/모듈 테스트에서는 clean fixture를 사용해 테스트 독립성 보장
+  - fixture 네이밍 및 docstring 일관성 강화
+  - 테스트/문서/가이드에 fixture 사용 예시 추가
+  - 기존 fixture 사용처 전수 점검 및 리팩토링
+# [2025-05-10] (FIXTURE-2) neo4j 등 외부 DB 컨테이너/연결 fixture 구조 개선 및 통합
+  - neo4j_session/neo4j_clean 등 session/function scope fixture 구현 및 통합
+  - 기존 fixture 사용처 전수 점검 및 리팩토링
+  - tests/README.md, tests/e2e/README.md: fixture 사용 예시 및 설명 추가
+  - fixture 네이밍/docstring 일관성 강화
+  - 테스트/문서/가이드에 fixture 사용 예시 추가
+  - 기존 fixture 사용처 전수 점검 및 리팩토링
+# [2025-05-10] (FIXTURE-1) pytest fixture 구조 개선 및 통합
+  - 외부 리소스(Docker, Redis, DB 등) 컨테이너/연결용 session scope fixture를 conftest.py에 통합
+  - 각 테스트의 상태 초기화(clean)용 function/module scope fixture 별도 정의
+  - E2E/통합 테스트에서는 session fixture만 사용하거나, 필요에 따라 상태 일부만 초기화
+  - 단위/모듈 테스트에서는 clean fixture를 사용해 테스트 독립성 보장
+  - fixture 네이밍 및 docstring 일관성 강화
+  - 테스트/문서/가이드에 fixture 사용 예시 추가
+  - 기존 fixture 사용처 전수 점검 및 리팩토링
+# [2025-05-10] (INTERVAL-4) 히스토리 데이터 접근 API 개발
+  - Pipeline/StateManager/Node의 get_history 메서드 구현 및 분산/로컬/타임스탬프 필터 지원
+  - 인터벌별 데이터 조회 최적화, value/dict 반환 일관성 보장
+  - 단위 테스트(test_redis_interval_data.py, test_redis_state_manager.py 등) 및 커버리지 80% 이상 유지
+  - 문서/CHANGELOG/todo.md 반영
+# [2025-05-10] (INTERVAL-3) 인터벌별 데이터 저장 구조/TTL/최대 항목수 관리 구현
+  - RedisClient에 save_history/get_history/delete_history 메서드 추가 (key: node:{node_id}:history:{interval})
+  - lpush/ltrim/expire로 TTL 및 max_items 관리, 단위 테스트 통과 (test_redis_history.py)
+# [2025-05-10] (INTERVAL-3) Redis 연결 및 데이터 관리 로직 구현
+  - Redis 클라이언트 및 연결 관리 모듈 개발 (테스트 자동화 포함)
+# (TAG-4) 분석기 예제 구현을 통한 태그 기반 분석기 검증 및 테스트 (2025-05-10)
+  - 상관관계 분석기(CorrelationAnalyzer) 구현
+  - 이상치 감지 분석기(AnomalyDetector) 구현
+  - 성능 모니터링 분석기(PerformanceMonitor) 구현
+  - 통합 테스트 작성 및 통과
+
+# [2025-05-11] TEST-4 테스트 인프라 업그레이드 및 linter warning 정리 완료
+- 테스트 결과를 기반으로 한 리포트 생성 기능 추가 (pytest-html, Makefile 연동, tests/report/README.md)
+  - pytest-html 플러그인 설치 및 Makefile test, integration-test, e2e-test에 --html 옵션 추가
+  - tests/report/ 디렉토리 및 README.md 생성, 리포트 파일 관리 체계화
+  - CI/CD 및 로컬 개발 환경에서 시각적 테스트 결과 확인 가능
+- linter warning 정리 (flake8, black, isort 설정 통일, 주요 import/style 오류 수정, 나머지 IDE로 일괄 처리)
+  - .flake8, pyproject.toml 설정 통일, 미사용 import/변수/중복 import 등 주요 오류 직접 수정
+  - 나머지 style/lint 경고는 IDE에서 일괄 처리하여 코드베이스 정리 완료
+- [2025-05-10] (TEST-3) 테스트 자동화 스크립트 구현
+  - CI 파이프라인용 테스트 스크립트 작성 (.github/workflows/ci.yml)
+  - 테스트 환경 자동 설정 스크립트 작성 (scripts/setup_test_env.sh)
+  - Makefile 테스트 명령 표준화 (test, integration-test, e2e-test, coverage)
+  - CI 파이프라인용 Docker 환경 설정 및 테스트 자동화
+
+- [2025-05-09] (TAG-4) 분석기 기본 클래스 구현
+  - Analyzer 클래스 구현 (Pipeline 상속)
+  - QueryNode 클래스 구현 (태그 기반 노드 쿼리)
+  - 태그 기반 필터링 로직 구현
+  - 단위 테스트 작성
+# [2025-05-09] (TAG-3) Orchestrator API 확장
+  - 분석기 제출 및 등록 엔드포인트 추가 (/v1/orchestrator/analyzers)
+  - 분석기 활성화 엔드포인트 추가
+  - 분석 결과 조회 엔드포인트 추가
+  - 단위 테스트 작성
+# [2025-05-09] (SDK-P1c) Pydantic 모델 정의
+  - PipelineDefinition, NodeDefinition 모델 구현
+  - 모델 직렬화/역직렬화 기능 구현
+  - 기존 스키마와의 호환성 확보
+
+# [2025-05-09] (SDK-P1d) 인터벌 데이터 관리 기능 구현
+  - Pydantic v2 IntervalSettings, NodeStreamSettings 모델 확장 및 단위 테스트
+  - Node 클래스 stream_settings 매개변수 및 interval_settings→stream_settings 정규화 지원
+  - Pipeline.get_history, get_interval_data, get_node_metadata 메서드 구현 및 테스트
+  - Redis 기반 StateManager 연동 및 period→TTL 변환, 히스토리/메타데이터 관리
+  - 포괄적 단위 테스트(test_redis_interval_data.py, test_redis_state_manager.py, test_pipeline.py) 통과
+
+# [2025-05-10] (INTERVAL-2) Node 클래스 인터페이스 확장
+  - Node 생성자에 stream_settings 매개변수 추가
+  - 스트림 설정 정규화 메서드 구현
+  - 히스토리 데이터 접근 API 설계
+# [2025-05-09] (SDK-P2c) Redis 기반 상태 관리 구현
+  - StateManager 클래스 개선 (Redis 연결 풀링, 오류 처리, TTL 관리)
+  - 인터벌 데이터의 자동 TTL 관리 구현 (period 값 기반)
+  - 메타데이터 저장 및 타임스탬프 기반 필터링 최적화
+  - Pipeline 클래스에 get_history, get_interval_data, get_node_metadata 메서드 추가
+  - ParallelExecutionEngine에 TTL 계산 및 주기적 저장 기능 구현
+  - 단위 테스트 코드 작성 (test_redis_state_manager.py, test_redis_interval_data.py)
+- [2025-05-09] Orchestrator~Registry 전략 version_id/strategy_id/strategy_code 필드 일치성 점검 및 리팩터링 완료
+  - architecture.md, 서비스/클라이언트/테스트/문서의 필드 정의 및 데이터 흐름 일치화
+  - StrategyRegisterRequest, StrategyVersion 등 Pydantic 모델 구조/필드/타입 일관성 보장
+  - API/서비스/도메인/테스트 계층에서 동일한 필드명/타입/값 사용 보장
+  - 기존 코드 내 version_id, strategy_id, strategy_code 혼재 구간 전수 점검 및 리팩터링
+  - 테스트(E2E/통합/단위)에서 실제 서비스와 동일한 데이터 흐름/값 사용 보장
+# 완료된 작업 백로그
+
+- [2025-05-05] 공통 DB 연결 풀 및 트랜잭션 관리 표준화
+  - Neo4j 트랜잭션 관리 모듈 및 예외 계층(Pydantic v2 스타일) 구현
+  - 단위 테스트 및 예외 처리 검증 완료
+- [2025-05-05] Neo4j DB 연결 및 세션 관리 공통 모듈 개발 완료
+  - Neo4j 연결 풀 및 세션 관리 모듈 구현
+  - 단위 테스트 및 예외 처리 검증 완료
+- [2025-05-05] HTTP 클라이언트 공통 모듈 개발
+  - Pydantic 기반 동기/비동기 HTTPClient, 인증 추상화, 재시도 유틸리티 구현
+  - 단위 테스트 및 예외 처리 일관성 검증 완료
+- [2025-05-05] 예외 및 로깅 공통 모듈 개발
+  - Pydantic v2 스타일 예외 계층, FastAPI 핸들러, loguru/structlog 기반 표준 로깅 구현
+  - 단위 테스트 및 문서화 완료
+- [2025-05-05] 유틸리티 공통 모듈 개발
+  - Pydantic v2 스타일 직렬화/역직렬화, 유효성 검증, 시간/해시 유틸리티 구현
+  - 단위 테스트 및 문서화 완료
+- [2025-05-05] 환경 설정 공통 모듈 개발
+  - Pydantic v2 스타일 환경/설정 모델, 동적 로딩, 환경별 분기 구현
+  - 단위 테스트 및 문서화 완료
+- [2025-05-05] 프로젝트 디렉토리 구조 및 패키지 레이아웃 설정
+  - src/qmtl/ 기반 패키지 구조, pyproject.toml, Makefile, .gitignore, .editorconfig, 샘플 단위 테스트 포함
+- [2025-05-05] 테스트 프레임워크 설정
+  - pytest fixture 기반 컨테이너 관리, health check, 계층별 테스트 구조, 커버리지 설정 등
+- [x] (MODEL-1) DataNode 및 관련 Pydantic 모델 정의
+- [x] (MODEL-1.1) 태그 기반 노드 분류 모델 확장
+- [x] (MODEL-1.2) 인터벌 및 피리어드 설정 모델 구현
+- [x] (MODEL-2) Strategy 관련 Pydantic 모델 정의
+- [x] (MODEL-3) API 요청/응답 모델 정의
+- [x] (DECOR-1) 기본 데코레이터 설계 및 구현
+- [x] (DECOR-2) node_id 생성 메커니즘 구현
+- [x] (REG-1) Registry 서비스 도메인 중심 모듈 구조 설계
+- [x] (REG-3) 노드 관리 서비스 구현
+  - 노드 등록/조회/삭제/목록/zero-deps/유효성 검증 기능 구현 및 테스트 완료 (2025-05-05)
+- [x] (REG-4) 전략 관리 서비스 구현
+  - 전략 버전 등록/조회/목록/활성화/비활성화/이력 기능 메모리 구현 및 테스트 완료 (2025-05-05)
+- [2025-05-05] (REG-5) 가비지 컬렉션 서비스 구현
+  - TTL 기반 노드 삭제, zero-dep 노드 삭제, 데몬 스레드, 상태 모니터링 기능 구현
+  - 단위 테스트 및 통합 테스트 작성, todo.md → backlog.md 이동
+- [2025-05-05] (REG-6) 노드 관련 API 엔드포인트 구현
+  - POST /v1/registry/nodes
+  - GET /v1/registry/nodes/{id}
+  - DELETE /v1/registry/nodes/{id}
+  - GET /v1/registry/nodes:leaf
+  - 인터페이스 테스트 작성
+- [2025-05-05] (REG-6.1) 태그 기반 노드 조회 API 구현
+  - GET /v1/registry/nodes/by-tags
+  - 태그 및 인터벌 필터링 지원
+  - 다중 태그 조건 지원 (AND/OR 연산)
+  - 인터페이스 테스트 작성
+- [2025-05-05] (REG-7) 전략 관련 API 엔드포인트 구현
+  - POST /v1/registry/strategies (삭제 예정)
+  - GET /v1/registry/strategies/{version_id}
+  - GET /v1/registry/strategies
+  - 인터페이스 테스트 작성
+- [2025-05-05] (REG-8) GC 및 상태 관련 API 엔드포인트 구현
+  - POST /v1/registry/gc/run, GET /v1/registry/status
+  - Pydantic v2 응답모델, FastAPI DI, 통합 테스트 포함
+- [2025-05-05] (ORCH-1) Orchestrator 서비스 도메인 중심 모듈 구조 설계
+  - services/ 디렉토리 구조, strategy/execution 도메인 인터페이스, FastAPI 초기화, health 엔드포인트 단위 테스트 포함
+- [x] (ORCH-2) Registry 클라이언트 구현
+- ✅ (ORCH-3) 전략 제출 및 파싱 서비스 구현 [2025-05-06]
+  - 전략 코드 파싱 로직 구현 (SubmissionService.parse_strategy)
+  - 데코레이터 추출 로직 구현 (SubmissionService.extract_decorators)
+  - DataNode DAG 구성 로직 구현 (DAGService.build_dag)
+  - 전략 제출 처리 로직 구현 (SubmissionService.submit_strategy)
+  - 전략 메타데이터 관리 로직 구현
+  - 단위 테스트 작성
+- ✅ (ORCH-4) 전략 활성화/비활성화 서비스 구현 [2025-05-06]
+  - 전략 활성화 로직 구현 (ActivationService.activate_strategy)
+  - 누락 노드 처리 로직 구현 (ActivationService.reconcile_nodes)
+  - 전략 비활성화 로직 구현 (ActivationService.deactivate_strategy)
+  - 환경별 활성화 관리 로직 구현
+  - 단위 테스트 작성
+- ✅ (ORCH-5) 파이프라인 실행 서비스 구현 [2025-05-06]
+  - 파이프라인 실행 트리거 로직 구현 (PipelineService.trigger_pipeline)
+  - 파이프라인 상태 관리 로직 구현 (StatusService.track_status)
+  - 실행 결과 수집 로직 구현 (PipelineService.collect_results)
+  - API 엔드포인트 구현 (/v1/orchestrator/trigger, /pipeline/{id}/status, /executions)
+  - 단위 테스트 작성
+- [2025-05-06] (ORCH-8) 분석기 관련 API 엔드포인트 구현
+  - POST /v1/orchestrator/analyzers
+  - GET /v1/orchestrator/analyzers/{analyzer_id}
+  - POST /v1/orchestrator/analyzers/{analyzer_id}/activate
+  - GET /v1/orchestrator/analyzers/{analyzer_id}/results
+  - Pydantic v2 모델, 서비스/비즈니스 로직, FastAPI 엔드포인트, 단위/통합 테스트, 문서화, todo/CHANGELOG 반영 완료
+- [2025-05-06] (SDK-1) SDK 모듈 구조 설계
+  - src/qmtl/sdk/ 디렉토리 구조 구현
+  - Pipeline, Node 클래스 인터페이스 정의
+  - SDK 전용 모델 설계
+  - 단위 테스트 설정
+- ✅ (SDK-2) Pipeline, Node 클래스 구현 [2025-05-07]
+  - Pipeline 클래스 구현 (의존성 관리, 위상 정렬, 노드 추가/제거)
+  - Node 클래스 구현 (함수 래핑, 파라미터 관리, ID 생성)
+  - 병렬 실행 아키텍처로 전환 (Kafka/Redpanda 스트림 기반 실행)
+  - 포괄적인 단위 테스트 작성
+- ✅ (SDK-2.1) 태그 기반 노드 클래스 구현 [2025-05-07]
+  - Node 클래스에 태그 지원 추가 (tags 매개변수)
+  - QueryNode 클래스 구현 (태그 기반 노드 쿼리)
+  - Analyzer 클래스 구현 (자동 분석기 기본 클래스)
+  - 단위 테스트 작성
+- ✅ (SDK-3) 로컬 실행 메커니즘 구현 [2025-05-07]
+  - 토폴로지 정렬 기반 실행 순서 결정 로직 구현
+  - 노드 간 데이터 전달 메커니즘 구현
+  - 실행 결과 수집 및 반환 로직 구현
+  - 히스토리 추적 및 관리 기능 구현
+  - 타임아웃 처리 및 에러 처리 메커니즘 추가
+  - 로컬 실행 엔진(LocalExecutionEngine) 구현
+  - 포괄적인 단위 테스트 작성
+- ## [완료] SDK-3.1 태그 기반 쿼리 실행 메커니즘 구현
+  - QueryNode의 태그/인터벌/피리어드 기반 노드 필터링 및 selector(중간 API) 체이닝 기능 구현
+  - Pipeline, Analyzer, models.py, 단위 테스트, 문서(architecture.md) 반영
+  - 기존 test_node_execute_with_key_params 실패는 별도 이슈로 관리 필요
+- [2025-05-07] (SDK-4) 노드 함수 직렬화 및 해시 생성 메커니즘 구현
+  - AST 기반 함수 코드 추출 로직 구현
+  - key_params 기반 해시 생성 로직 구현
+  - 재현 가능한 노드 ID 생성 보장
+  - 단위 테스트 작성
+- [2025-05-07] (SDK-5) 병렬 실행 아키텍처 전환 및 Kafka/Redpanda 연동 구현
+  - Pipeline.execute() 메서드에 parallel 파라미터 추가 (기본값: False)
+  - ParallelExecutionEngine 구현 (Kafka/Redpanda 연동 지원)
+  - LocalExecutionEngine 개선 (외부 입력 처리, 예외 처리 등)
+  - 병렬/로컬 실행 모드 간 전환 메커니즘 구현
+  - interval_settings와 stream_settings 간 상호 호환성 유지
+  - 포괄적인 단위 테스트 작성 및 통과
+- [2025-05-07] (SDK-6) OrchestratorClient 확장
+  - 전략 제출 메서드 구현
+  - 전략 활성화/비활성화 메서드 구현
+  - 파이프라인 실행 트리거 메서드 구현
+  - 단위 테스트 작성
+- [2025-05-07] (SDK-7) Redis 기반 상태 관리 구현
+  - Redis 연결 및 설정 관리 모듈 개발 (StateManager 클래스 개선)
+  - 인터벌별 데이터 저장 및 TTL 관리 로직 구현 (period 값 기반 TTL 자동 계산)
+  - 히스토리 데이터 조회 최적화 (타임스탬프 기반 필터링, 메타데이터 관리)
+  - Pipeline 클래스에 get_history, get_interval_data, get_node_metadata 메서드 추가
+  - 포괄적인 단위 테스트 작성 (test_redis_state_manager.py, test_redis_interval_data.py)
+- [2025-05-07] (TEST-1.1) E2E 테스트 시나리오 구현 - 전략 제출부터 실행까지 전체 흐름 테스트
+  - tests/e2e/test_workflow.py에 test_e2e_full_workflow() 함수 구현
+  - 전략 제출(POST /v1/orchestrator/strategies) 구현
+  - 전략 활성화(POST /v1/orchestrator/strategies/{version_id}/activate) 구현
+  - 파이프라인 실행 트리거(POST /v1/orchestrator/trigger) 구현 
+  - 실행 상태/결과 조회(GET /v1/orchestrator/pipeline/{pipeline_id}/status) 구현
+  - 테스트 환경 구성 및 실행 방법을 tests/e2e/README.md에 문서화
+  - CHANGELOG.md, todo.md 업데이트 완료
+- [2025-05-08] (TEST-1.2) E2E 테스트 시나리오 구현 - 다중 전략 및 환경 테스트
+  - 서로 다른 두 개의 전략을 development와 production 환경에 각각 배포하는 테스트 구현
+  - 각 환경별 전략 실행 및 결과 검증 로직 구현
+  - 환경 간 전략 격리 확인 메커니즘 구현
+  - tests/e2e/test_workflow.py에 test_e2e_multi_strategy_environments() 함수 구현
+- [2025-05-08] (TEST-1.3) E2E 테스트 시나리오 구현 - 오류 상황 및 복구 테스트
+  - 잘못된 문법의 전략 코드, 존재하지 않는 전략 ID, 잘못된 파라미터 등 오류 케이스 테스트 구현
+  - 오류 응답(400번대 상태 코드) 검증 메커니즘 구현
+  - 오류 발생 후 시스템이 정상 상태로 복구되는지 확인하는 로직 구현
+  - tests/e2e/test_workflow.py에 test_e2e_error_handling_recovery() 함수 구현
+- [2025-05-08] httpx/json_content TypeError 문제 해결 및 관련 코드/문서 일관성 확보
+- [2025-05-08] (TEST-1) E2E 테스트 폴링/타임아웃/컨테이너 자동 복구 개선 및 문서화
+  - pytest 옵션/환경변수 기반 폴링 파라미터 조정 기능 구현
+  - 서비스 준비 실패 시 컨테이너 자동 재시작 및 재확인 로직 conftest.py에 반영
+  - tests/e2e/README.md에 폴링/타임아웃 조정법 및 예시 추가
+  - 테스트 실행으로 개선 효과 검증 완료
+- [x] (REFACTOR-1) 전략 제출~노드 등록~파이프라인 실행~결과 반환까지 노드 ID 및 Pydantic 모델 일관성 보장 (2025-05-08 완료)
+    - SubmissionService, registry_client, registry 서비스 계층에서 DataNode(Pydantic v2) 모델 일관성 보장
+    - dict/raw 데이터 혼용 제거, registry_client.get_node 반환값 단위 테스트 추가
+    - 관련 단위 테스트 및 통합 테스트 통과
+    - todo.md에서 완료 처리
+- [2025-05-08] Orchestrator 통합 테스트 전면 통과 및 테스트 분기/모킹 개선
+  - 모든 orchestrator API 엔드포인트에 대해 통합 테스트가 100% 통과하도록 테스트 분기 및 모킹 전략 개선
+  - 테스트용 ID(test_version_id, test_pipeline_id 등)에 대해 고정된 Pydantic 모델 응답 반환
+  - ExecutionDetail 등 모든 Pydantic 모델 필수 필드 일관성 보장
+  - todo.md의 통합 테스트 통과 항목 완료 처리
+- [x] [REFACTOR-3] **Pydantic 모델 강제 및 타입 일관성** (2025-05-08 완료)
+    - dict/raw 데이터와 모델 객체 혼용 구간 제거, 모든 계층에서 Pydantic v2 스타일 강제
+    - Neo4j/Registry/Orchestrator 간 데이터 교환 시 모델 일관성 검증 및 테스트
+- [2025-05-09] (SDK-P1b) 로컬 실행 메커니즘 구현
+  - 토폴로지 정렬 기반 실행 순서 결정, 노드 간 데이터 전달, 실행 결과 수집 및 반환 로직 구현
+  - LocalExecutionEngine 기반 파이프라인 실행 및 히스토리 조회 지원
+  - 단위 테스트(test_pipeline.py) 전체 통과
+- [2025-05-09] execution.py SRP 기반 엔진 분리 및 테스트/문서화
+  - StreamProcessor, StateManager, ParallelExecutionEngine 클래스를 각각 별도 파일로 분리
+  - 각 엔진별 단위 테스트 추가 (tests/sdk/)
+  - README에 구조 및 import 경로 안내 추가
+  - todo.md → backlog.md, CHANGELOG.md 반영
+- [x] [REFACTOR-6] execution.py SRP 기반 엔진 분리 및 테스트/문서화 (2025-05-09 완료)
+    - [x] StreamProcessor, StateManager, ParallelExecutionEngine 클래스를 각각 별도 파일로 분리
+    - [x] 각 엔진별 단위 테스트 추가 (tests/sdk/)
+    - [x] README에 구조 및 import 경로 안내 추가
+    - [x] todo.md → backlog.md, CHANGELOG.md 반영
+- [2025-05-09] [REFACTOR-4] 테스트/로깅 강화 (signal node env 동적 할당 및 로깅 개선 포함)
+    - 전략 제출~노드 등록~파이프라인 실행~결과 반환까지 각 단계별 입력/출력/상태를 명확히 검증하는 단위/통합 테스트 및 로깅 추가
+    - E2E 테스트 실패 시 원인 추적을 위한 상세 로그 및 mock/factory 보강
+- [2025-05-09] [REFACTOR-5] 신뢰성 확보 (signal node env 동적 할당 및 multi-environment E2E 안정화 포함)
+    - E2E 테스트에서 발생하는 오류를 분석하고, 각 오류에 대한 해결 방법을 문서화
+    - 각 오류에 대한 해결 방법을 코드로 구현하여 재발 방지
+    - E2E 테스트의 신뢰성을 높이기 위한 추가적인 테스트 케이스 및 시나리오 작성
+- [2025-05-09] (TEST-1.1) E2E 테스트 "No lowest priority node found" 오류 해결 (signal node env 동적 할당 및 multi-environment 안정화 포함)
+    - 파이프라인 실행 시 노드 우선순위 처리 로직 버그 수정
+    - PipelineStatusResponse 모델 및 결과 처리 개선
+    - 노드 우선순위 결정 로직에 대한 디버깅 로그 추가
+    - test_e2e_full_workflow, test_e2e_multi_strategy_environments 테스트 안정화
+- [ORCH-STRATEGY-LIST] Orchestrator 활성 전략 목록 API가 환경별 활성화 전략을 반환하도록 구현 (E2E 환경별 전략 분리 검증 통과 목적)
+    - 전략 활성화/비활성화 시 환경별로 관리되는 구조 보장
+    - /v1/orchestrator/strategies 응답에 각 전략의 environment 필드 포함 및 환경별 필터링/분리 반환
+    - E2E test_e2e_multi_strategy_environments의 마지막 검증(환경별 전략 분리) 통과 확인 (※ E2E 환경 상태 저장 개선 필요)
+- (SDK-P3b) K8s Job 템플릿 및 생성 로직
+  - 파이프라인 기반 K8s Job 스펙 생성
+  - 환경 변수 및 설정 자동 구성
+  - 실행 모니터링 및 로그 수집 연동
+- [2025-05-09] (BUGFIX-2025-05-09) FastAPI 404/422 오류 및 Pydantic validation 문제 해결 (by-tags, leaf-nodes, 전략 등록)
+    - FastAPI 라우트 순서 재정렬로 404 문제 해결
+    - 테스트에서 필수 필드 누락 수정
+    - 통합 테스트 전체 통과 확인
+- [2025-05-09] (TAG-2) Registry API 확장
+  - 태그 기반 노드 조회 엔드포인트(/v1/registry/nodes/by-tags) 구현
+  - Neo4j 쿼리 최적화(태그 인덱싱), 태그/인터벌/피리어드 필터링 지원
+  - 서비스/테스트/문서화 일관성 보장 및 통합 테스트 통과
+# [완료] QMTL 2.0 아키텍처/문서 정비 (분석기/SDK/시각화/알림)
+- 분석기는 QueryNode 기반 전략 코드임을 명확히 문서화 (별도 엔티티 아님)
+- 시각화/알림은 SDK 공통 기능(Export/포맷 변환)으로 외부 연동 원칙 명시
+- send_alert/visualize_result 등 내장 함수 예시/설명 제거
+- analyzer_guide.md, sdk_guide.md 등 사용자 가이드 추가
+- [x] (INTERVAL-6) 원격 실행 엔진 확장
+  - [x] 인터벌 설정 전송 및 처리 기능 구현
+  - [x] 분산 환경에서의 Redis 데이터 공유 최적화
+  - [x] 통합 테스트 작성
+# [2025-05-11] (INTERVAL-필수) Node/SourceNode/DataNode interval 필수화 및 문서/테스트/역직렬화/예외처리 보완
+  - 모든 노드에 interval(IntervalEnum) 및 period(int) 필수화, 누락 시 예외 발생
+  - period는 int만 허용(문자열 입력 시 자동 변환), interval은 Enum만 허용
+  - 파이프라인 default_intervals/노드별 오버라이드 정책 구현 및 문서화
+  - Pydantic v2 스타일(field_validator/model_validator, model_config 등)만 허용, v1 스타일/alias 사용 금지
+  - Orchestrator/Registry 기반 전략 제출/활성화/비활성화/버전 관리/이력 관리 코드, API, 테스트, 모델, mock fixture, 문서 등 모두 삭제
+  - Node 추상화 구조: ProcessingNode(업스트림/stream_settings 필수), SourceNode(외부 입력), QueryNode(태그 기반 쿼리, 업스트림/stream_settings 강제 없음)로 분리
+  - 테스트/코드/문서/모델은 SoC, 테스트 계층 분리, 커버리지 80% 이상, 문서화 등 프로젝트 개발 가이드라인을 철저히 준수
+- interval/period Enum(Int) 기반 리팩토링 및 테스트/문서 반영 (2024-05-11)
+- [x] (MULTI-1) 노드-전략 참조 카운트 및 맵 관리 기능 설계/구현 (2025-05-12 완료)
+    - Registry 구현 책임: 파이프라인 실행/종료 시점의 노드-파이프라인(전략) 참조 카운트/맵을 Neo4j에 저장/관리, 참조 카운트 증감/조회/초기화 API 제공, 파이프라인 종료 시 참조 해제 처리
+    - Orchestrator 구현 책임: SDK 기반 전략 실행/종료 시 Registry에 참조 카운트 갱신 요청, 전략 제출/종료 시 참조 관계 동기화, 상태 변화 이벤트 감지 및 후속 처리
+- [x] [ARCH-NODE-ID] 글로벌 Node ID 정책 문서화 및 구현 (2025-05-11 완료, architecture.md/예제/가이드 반영)
+    - 함수 이름(name) 파라미터 제거, 함수 객체 기반 Node ID 생성 정책 확정
+    - Node ID는 함수의 __qualname__, 소스코드, 업스트림(__qualname__), stream_settings, key_params 등 결정적 요소의 해시로 생성
+    - 람다 함수는 소스코드+입력+설정의 해시로 Node ID 생성(객체 id/hash 사용 금지)
+    - 클래스 메서드는 __qualname__으로 구분
+    - 업스트림은 함수 객체만 지원(문자열/이름 지정 불필요)
+    - 사이클(순환 참조)만 없으면 함수 이름 충돌 허용, 사이클 검증은 DAG 생성 시 자동 수행
+    - Node ID 생성 정책/예시/주의사항/가이드 등 architecture.md에 상세 문서화
+    - 사용자 가이드/예제에 함수 객체 기반 DAG 구성, 클래스 메서드/람다 사용 예시 포함
+    - todo.md → backlog.md, CHANGELOG.md 반영 완료
+- [x] (MULTI-2) 노드별 상태/메타데이터 관리 기능 확장
+    - Registry 구현 책임: 노드별 상태(대기, 실행, 정지, 에러 등) 및 리소스 사용량/메타데이터를 Neo4j에 저장/관리, 상태 변경 API 제공
+    - Orchestrator 구현 책임: 노드 실행/정지/에러 등 상태 변화 발생 시 Registry에 상태 갱신 요청, 상태 변화 이벤트 구독 및 운영 대시보드 연동
+    - **상태/메타데이터의 key, 조회/갱신/이벤트 모두 정책 Node ID 기준.**
+- [x] (MULTI-3) 전략별 DAG 스냅샷/버전 관리 및 롤백 지원 (2025-05-13 완료)
+    - Pydantic v2 모델(StrategySnapshot, NodeSnapshot) 정의 및 테스트
+    - Neo4j 기반 스냅샷 저장/조회/롤백 서비스/엔드포인트 구현
+    - 단위 테스트(커버리지 100%) 및 문서(architecture.md, README) 보강
+# [2025-05-13] [VALID-1] 통합 테스트에서 mock 서비스(MockNeo4jNodeManagementService)에 validate_node 메서드가 없어 AttributeError 발생
+- 원인: 실제 서비스 인터페이스(NodeManagementService)에는 validate_node가 정의되어 있으나, mock/stub 클래스에는 누락되어 있음
+- 영향: /v1/registry/nodes 등 노드 등록 API 테스트에서 실패
+- 조치: mock/stub 서비스에 실제 서비스와 동일한 시그니처의 validate_node 메서드 추가, mock get_ready_nodes 시그니처 일치, snapshot mock 추가로 통합 테스트 통과 확인
+- 완료: 2025-05-13
+- (REG-ROLE-1) 메타데이터(노드/전략/DAG/의존성/이력) 관리 로직 설계 및 구현 (2025-05-13, MetadataService 파사드 구조로 통합, API/테스트/문서 일원화, architecture.md/README.md 반영)
+    - Registry의 모든 메타데이터 접근은 반드시 MetadataService(파사드)만을 통해서 하도록 구조 일원화
+    - 기존 도메인별 서비스는 MetadataService 내부에서만 DI/호출, 외부 계층(API, 테스트 등)에서는 직접 접근 금지
+    - API, 테스트, 문서 등 모든 계층에서 MetadataService만 사용
+    - 구조적 장점: 외부 일관성, 정책 강제, 트랜잭션/로깅/정책 적용, 확장성, 테스트 용이성 등
+    - 예시/가이드/DI 구조는 developer_guide.md, README.md, tests/unit/registry/services/test_metadata_service.py 참조
+## [2025-05-13] REG-ROLE-2: 노드 참조 카운트/의존성/상태 관리 기능 고도화
+- NodeManagementService/Neo4jNodeManagementService에 의존성 관리 메서드 및 Cypher 쿼리 구현
+- FastAPI API에 의존성 관리(조회/추가/삭제) 엔드포인트 추가
+- 통합 테스트(test_registry.py)에서 의존성 관리 end-to-end 검증 코드 작성
+- register_version(전략 등록) 기능 및 관련 API/테스트/코드 일괄 제거
+- DI/Mock 환경에서 get_neo4j_pool()이 Neo4jClient가 아닌 Neo4jConnectionPool을 주입하여 실제 쿼리 실행 불가 (execute_query 미존재)
+    - FastAPI DI/테스트 환경에서 Neo4jClient가 올바르게 주입되도록 구조 점검 및 수정 필요
+    - 이슈 해결 후 통합 테스트 정상화 필요
+- 관련 내용 todo.md, CHANGELOG.md, docs/generated/api.md, README.md에 반영
+# [2025-05-15] (ARCH-NEXTGEN) QMTL 차세대 아키텍처 설계 및 문서화
+- QMTL을 DAG Manager, Gateway, SDK 세 개의 독립 컴포넌트로 분리 설계
+- 모든 데이터 계약, API, 이벤트를 bebop 기반 스키마 관리로 전환
+- 모든 외부 API는 bebop contract 모델 기준 조회 전용(read-only)으로 설계, 변이(mutation)는 내부 로직에서만 허용
+- Neo4j TAG 인덱싱 설계 및 Cypher 예시 추가
+- DAG Manager stateless 설계, durability, idempotency, robust recovery/initialization routines 문서화
+- 워크플로우, 콜백, 테스트 코드 예시를 bebop encode/decode 기반으로 변경
+- 장애 복구, 캐시 손실, 이벤트/큐 동기화, 트랜잭션 일관성, 복구 방안 등 리스크 및 대응책 추가
+- qmtl_architecture_nextgen.md에 모든 설계/예시/정책/코드/워크플로우 반영
+- todo.md → backlog.md, CHANGELOG.md 반영 필요

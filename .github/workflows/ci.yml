@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: none
+        ports:
+          - 7687:7687
+          - 7474:7474
+      redpanda:
+        image: vectorized/redpanda:v23.2.2
+        ports:
+          - 9092:9092
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install uv
+        run: pip install uv
+      - name: Install dependencies
+        run: uv pip install -e .
+      - name: Set up test environment
+        run: make docker-up
+      - name: Run CI (lint, unit, integration)
+        run: make ci
+      - name: Run E2E tests
+        run: make e2e-test
+      - name: Run coverage
+        run: make coverage
+      - name: Tear down test environment
+        if: always()
+        run: make docker-down
