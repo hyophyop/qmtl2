@@ -521,3 +521,7 @@
 - 장애 복구, 캐시 손실, 이벤트/큐 동기화, 트랜잭션 일관성, 복구 방안 등 리스크 및 대응책 추가
 - qmtl_architecture_nextgen.md에 모든 설계/예시/정책/코드/워크플로우 반영
 - todo.md, backlog.md, CHANGELOG.md 반영
+
+### [2025-05-17] Python version bump to 3.12
+- pyproject.toml의 requires-python 및 mypy python_version을 3.12로 상향
+- Python 3.12 가상환경 생성 및 모든 의존성 재설치
