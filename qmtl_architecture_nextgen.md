@@ -10,9 +10,9 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
 
 이 문서는 개발/리팩토링에 직접 활용 가능한 상세 설계와 구현 가이드를 제공합니다.
 
-## 1. API 설계 원칙: bebop contract 기반 조회 전용
-- **bebop contract(스키마) 기반 모델은 외부 API에서 조회(read)만 허용, 직접 조작(mutate)은 불가**
-  - 모든 서비스(API)는 bebop 기반 데이터 구조를 조회(검색, 상세, 목록 등)하는 엔드포인트만 제공
+## 1. API 설계 원칙: protobuf contract 기반 조회 전용
+- **protobuf contract(스키마) 기반 모델은 외부 API에서 조회(read)만 허용, 직접 조작(mutate)은 불가**
+  - 모든 서비스(API)는 protobuf 기반 데이터 구조를 조회(검색, 상세, 목록 등)하는 엔드포인트만 제공
   - 데이터 생성/수정/삭제 등 조작은 내부 서비스 로직(비즈니스 계층, 서비스 간 RPC 등)에서만 수행, 외부 API 명세에는 아예 노출하지 않음
   - contract의 무결성, 관심사 분리, 데이터 일관성 보장
   - 예시: `/v1/dag-manager/nodes` GET(조회)만 외부에 공개, POST/PUT/DELETE 등은 내부 서비스에서만 사용
@@ -44,10 +44,10 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
   - `src/qmtl/dag_manager/repositories/kafka_topic_repository.py`: Kafka 토픽 저장소
 
 - **주요 모델 및 인터페이스**:
-  - `models/node.py`: 노드 정의 및 상태 모델 (bebop 기반)
-  - `models/dag.py`: DAG 구조 모델 (bebop 기반)
-  - `models/stream.py`: 스트림 메타데이터 모델 (bebop 기반)
-  - `models/event.py`: 이벤트 및 콜백 모델 (bebop 기반)
+  - `models/node.py`: 노드 정의 및 상태 모델 (protobuf 기반)
+  - `models/dag.py`: DAG 구조 모델 (protobuf 기반)
+  - `models/stream.py`: 스트림 메타데이터 모델 (protobuf 기반)
+  - `models/event.py`: 이벤트 및 콜백 모델 (protobuf 기반)
 
 ### QMTL Gateway
 - **SDK와 DAG Manager 사이의 중계 및 조율 서비스**
@@ -80,9 +80,9 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
   4. `retry_failed_work`: 실패한 작업 재시도 처리
 
 - **주요 모델 및 인터페이스**:
-  - `models/work.py`: 작업 정의 및 상태 모델 (bebop 기반)
-  - `models/callback.py`: 콜백 및 이벤트 모델 (bebop 기반)
-  - `models/strategy.py`: 전략 및 요청 모델 (bebop 기반)
+  - `models/work.py`: 작업 정의 및 상태 모델 (protobuf 기반)
+  - `models/callback.py`: 콜백 및 이벤트 모델 (protobuf 기반)
+  - `models/strategy.py`: 전략 및 요청 모델 (protobuf 기반)
 
 ### QMTL SDK
 - **사용자 전략(DAG) 작성 및 실행의 표준 인터페이스**
@@ -94,13 +94,13 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
   - `StateManager`: 노드/전략 상태 관리 및 저장
 
 - **핵심 API 및 클래스**:
-  - `Node`: 기본 노드 클래스(데코레이터 기반, bebop 기반 모델 활용)
-  - `SourceNode`: 데이터 소스 노드 (bebop 기반)
-  - `DataNode`: 데이터 처리 노드 (bebop 기반)
-  - `QueryNode`: 태그 기반 동적 참조 노드 (bebop 기반)
+  - `Node`: 기본 노드 클래스(데코레이터 기반, protobuf 기반 모델 활용)
+  - `SourceNode`: 데이터 소스 노드 (protobuf 기반)
+  - `DataNode`: 데이터 처리 노드 (protobuf 기반)
+  - `QueryNode`: 태그 기반 동적 참조 노드 (protobuf 기반)
   - `run_strategy()`: 전략 실행 및 DAG 추출
   - `get_node_status()`: 노드 상태 조회
-  - `StreamSettings`: 스트림 설정 관리 (bebop 기반)
+  - `StreamSettings`: 스트림 설정 관리 (protobuf 기반)
 
 - **주요 구현 클래스/모듈**:
   - `src/qmtl/sdk/core/dag_extractor.py`: DAG 추출 및 분석
@@ -129,9 +129,9 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
   ```
 
 - **주요 모델 및 인터페이스**:
-  - `models/node.py`: 노드 정의 및 실행 모델 (bebop 기반)
-  - `models/stream_settings.py`: 스트림 설정 모델 (bebop 기반)
-  - `models/strategy_result.py`: 전략 실행 결과 모델 (bebop 기반)
+  - `models/node.py`: 노드 정의 및 실행 모델 (protobuf 기반)
+  - `models/stream_settings.py`: 스트림 설정 모델 (protobuf 기반)
+  - `models/strategy_result.py`: 전략 실행 결과 모델 (protobuf 기반)
 
 
 ## 2. 전체 워크플로우 예시
@@ -161,9 +161,10 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
    def submit_dag(dag):
        response = requests.post(
            f"{GATEWAY_URL}/v1/gateway/strategies", 
-           json=dag.model_dump()
+           data=dag.SerializeToString(),
+           headers={"Content-Type": "application/x-protobuf"}
        )
-       return StrategyResponse.model_validate(response.json())
+       return StrategyResponse.FromString(response.content)
    ```
 
 3. **작업 큐 등록 및 처리** (Gateway):
@@ -174,7 +175,7 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
        work_item = WorkItem(
            id=work_id,
            type=WorkType.STRATEGY_EXECUTION,
-           payload=strategy_request.model_dump(),
+           payload=strategy_request.SerializeToString(),
            status=WorkStatus.PENDING
        )
        self.queue_repository.push(work_item)
@@ -187,9 +188,10 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
    def get_node_metadata(node_ids):
        response = requests.post(
            f"{DAG_MANAGER_URL}/v1/dag-manager/nodes/metadata",
-           json={"node_ids": node_ids}
+           data=NodeIdList(node_ids=node_ids).SerializeToString(),
+           headers={"Content-Type": "application/x-protobuf"}
        )
-       return [NodeMetadata.model_validate(node) for node in response.json()]
+       return NodeMetadataList.FromString(response.content).items
    ```
 
 5. **QueryNode TAG 처리** (Gateway):
@@ -397,8 +399,8 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
           self.results_key = "qmtl:gateway:results"
       
       def push(self, work_item):
-          """작업 큐에 항목 추가 (bebop 바이너리)"""
-          serialized = work_item.encode()
+          """작업 큐에 항목 추가 (protobuf 바이너리)"""
+          serialized = work_item.SerializeToString()
           self.redis.lpush(self.queue_key, serialized)
           
       def pop(self, timeout=0):
@@ -406,7 +408,7 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
               self.queue_key, self.processing_key, timeout
           )
           if raw:
-              return WorkItem.decode(raw)
+              return WorkItem.FromString(raw)
           return None
       
       def complete(self, work_id, result=None):
@@ -438,17 +440,18 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
   ```
 
 ### 3.4 상태/콜백 전달 방식
-- **초기: REST 기반 폴링 (bebop 직렬화/역직렬화 적용)**
+- **초기: REST 기반 폴링 (protobuf 직렬화/역직렬화 적용)**
   ```python
   # sdk/clients/gateway_client.py
   def poll_strategy_status(strategy_id, interval=5):
-      """전략 상태 폴링 (bebop 바이너리 응답 기준)"""
+      """전략 상태 폴링 (protobuf 바이너리 응답 기준)"""
       while True:
           response = requests.get(
-              f"{GATEWAY_URL}/v1/gateway/strategies/{strategy_id}/status"
+              f"{GATEWAY_URL}/v1/gateway/strategies/{strategy_id}/status",
+              headers={"Accept": "application/x-protobuf"}
           )
-          # bebop 바이너리 응답을 decode
-          status = StrategyStatus.decode(response.content)
+          # protobuf 바이너리 응답을 decode
+          status = StrategyStatus.FromString(response.content)
           # 종료 조건 체크
           if status.state in [State.COMPLETED, State.FAILED, State.CANCELED]:
               return status
@@ -458,72 +461,72 @@ QMTL 시스템을 3개의 독립적인 서비스로 분리하여 관심사 분�
           time.sleep(interval)
   ```
 
-- **콜백/이벤트 전달도 bebop 바이너리로 통일**
+- **콜백/이벤트 전달도 protobuf 바이너리로 통일**
   ```python
   # gateway/services/callback_service.py
   def notify_executable_nodes(strategy_id, node_ids):
       callback_url = get_callback_url(strategy_id)
       if callback_url:
-          # 콜백 페이로드를 bebop 구조체로 생성 후 encode
+          # 콜백 페이로드를 protobuf 메시지로 생성 후 SerializeToString
           payload = ExecutableNodesEvent(
               strategy_id=strategy_id,
               node_ids=node_ids
-          ).encode()
+          ).SerializeToString()
           requests.post(
               callback_url,
               data=payload,  # 바이너리 전송
-              headers={"Content-Type": "application/octet-stream"}
+              headers={"Content-Type": "application/x-protobuf"}
           )
   ```
 
-- **내부 서비스 간 데이터 교환, 큐, 브로커, 테스트 등도 모두 bebop encode/decode 사용**
+- **내부 서비스 간 데이터 교환, 큐, 브로커, 테스트 등도 모두 protobuf SerializeToString/FromString 사용**
   ```python
   # gateway/repositories/redis_queue_repository.py
   class RedisQueueRepository:
       ...
       def push(self, work_item):
-          """작업 큐에 항목 추가 (bebop 바이너리)"""
-          serialized = work_item.encode()
+          """작업 큐에 항목 추가 (protobuf 바이너리)"""
+          serialized = work_item.SerializeToString()
           self.redis.lpush(self.queue_key, serialized)
       def pop(self, timeout=0):
           raw = self.redis.brpoplpush(
               self.queue_key, self.processing_key, timeout
           )
           if raw:
-              return WorkItem.decode(raw)
+              return WorkItem.FromString(raw)
           return None
   ```
 
-- **테스트, golden test, round-trip test 등도 bebop encode/decode 기준**
+- **테스트, golden test, round-trip test 등도 protobuf SerializeToString/FromString 기준**
   ```python
-  def test_bebop_round_trip():
+  def test_protobuf_round_trip():
       node = Node(id="n1", ...)
-      payload = node.encode()
-      node2 = Node.decode(payload)
+      payload = node.SerializeToString()
+      node2 = Node.FromString(payload)
       assert node == node2
   ```
 
 
-## 결론: bebop 기반 contract-first 아키텍처의 일관성
-- QMTL의 모든 데이터 계약, API, 이벤트, 테스트, 문서화, 자동화는 bebop 스키마를 단일 진실 소스로 삼아 관리
-- 서비스/SDK/테스트/문서화/자동화 등 모든 계층에서 bebop 타입만 사용함으로써, 언어/플랫폼 독립적이고, 일관성/신뢰성/생산성이 극대화된 구조를 실현
-- 기존 Python 모델 패키지 방식은 완전히 대체되며, bebop 스키마 관리가 표준임을 명확히 함
+## 결론: protobuf 기반 contract-first 아키텍처의 일관성
+- QMTL의 모든 데이터 계약, API, 이벤트, 테스트, 문서화, 자동화는 protobuf 스키마를 단일 진실 소스로 삼아 관리
+- 서비스/SDK/테스트/문서화/자동화 등 모든 계층에서 protobuf 타입만 사용함으로써, 언어/플랫폼 독립적이고, 일관성/신뢰성/생산성이 극대화된 구조를 실현
+- 기존 Python 모델 패키지 방식은 완전히 대체되며, protobuf 스키마 관리가 표준임을 명확히 함
 
 ## 결론(추가):
-- bebop contract 기반 데이터 구조는 외부 API에서 조회(read)만 허용, 조작은 내부 서비스 계층에서만 수행
+- protobuf contract 기반 데이터 구조는 외부 API에서 조회(read)만 허용, 조작은 내부 서비스 계층에서만 수행
 - 이를 통해 데이터 무결성, 관심사 분리, 서비스 간 결합도 최소화, 유지보수성 극대화
 
-### [bebop vs json 직렬화/역직렬화 표준]
-- **API, 이벤트, 서비스 간 데이터 교환, 테스트 등 모든 실제 데이터 페이로드는 bebop 직렬화/역직렬화가 표준**
-  - 예: `payload = node.encode()` (bebop 직렬화), `node2 = Node.decode(payload)` (bebop 역직렬화)
-  - API, 메시지 브로커, 내부 큐, 테스트 golden data 등에서 json 대신 bebop 바이너리 포맷 사용
+### [protobuf vs json 직렬화/역직렬화 표준]
+- **API, 이벤트, 서비스 간 데이터 교환, 테스트 등 모든 실제 데이터 페이로드는 protobuf 직렬화/역직렬화가 표준**
+  - 예: `payload = node.SerializeToString()` (protobuf 직렬화), `node2 = Node.FromString(payload)` (protobuf 역직렬화)
+  - API, 메시지 브로커, 내부 큐, 테스트 golden data 등에서 json 대신 protobuf 바이너리 포맷 사용
 - **JSON은 human-friendly 문서, 디버깅, 외부 문서화 용도로만 사용**
-  - 필요시 bebop 타입에서 json 변환 유틸리티 제공 (예: `node.to_json()`, `Node.from_json(json_str)` 등)
-  - OpenAPI/문서화/예제 등은 bebop 스키마 → json schema 변환을 통해 자동 생성
-- **테스트/검증/golden test 등도 bebop 직렬화 기반**
-  - round-trip test, schema validation, golden test 등은 모두 bebop encode/decode 기준으로 작성
+  - 필요시 protobuf 타입에서 json 변환 유틸리티 제공 (예: `MessageToJson(node)`, `Parse(node_json, Node())` 등)
+  - OpenAPI/문서화/예제 등은 protobuf 스키마 → json schema 변환을 통해 자동 생성
+- **테스트/검증/golden test 등도 protobuf 직렬화 기반**
+  - round-trip test, schema validation, golden test 등은 모두 protobuf SerializeToString/FromString 기준으로 작성
 - **기존 model_dump, model_validate, model_json_schema 등 Pydantic/json 기반 메서드는 사용하지 않음**
-  - 모든 데이터 구조/계약/테스트/문서화의 단일 진실 소스는 bebop 스키마와 그로부터 생성된 타입/직렬화 코드임을 반복 강조
+  - 모든 데이터 구조/계약/테스트/문서화의 단일 진실 소스는 protobuf 스키마와 그로부터 생성된 타입/직렬화 코드임을 반복 강조
 
 ---
 

@@ -511,17 +511,12 @@
     - 이슈 해결 후 통합 테스트 정상화 필요
 - 관련 내용 todo.md, backlog.md, docs/generated/api.md, README.md에 반영
 
-### ARCH-NEXTGEN: QMTL 차세대 아키텍처 설계 및 문서화 (2025-05-15)
+### ARCH-NEXTGEN: QMTL 차세대 아키텍처 protobuf 기반 전환 (2025-05-17)
 - QMTL을 DAG Manager, Gateway, SDK 세 개의 독립 컴포넌트로 분리 설계
-- 모든 데이터 계약, API, 이벤트를 bebop 기반 스키마 관리로 전환
-- 모든 외부 API는 bebop contract 모델 기준 조회 전용(read-only)으로 설계, 변이(mutation)는 내부 로직에서만 허용
+- 모든 데이터 계약, API, 이벤트를 protobuf 기반 스키마 관리로 전환
+- 모든 외부 API는 protobuf contract 모델 기준 조회 전용(read-only)으로 설계, 변이(mutation)는 내부 로직에서만 허용
 - Neo4j TAG 인덱싱 설계 및 Cypher 예시 추가
 - DAG Manager stateless 설계, durability, idempotency, robust recovery/initialization routines 문서화
-- 워크플로우, 콜백, 테스트 코드 예시를 bebop encode/decode 기반으로 변경
+- 워크플로우, 콜백, 테스트 코드 예시를 protobuf SerializeToString/FromString 기반으로 변경
 - 장애 복구, 캐시 손실, 이벤트/큐 동기화, 트랜잭션 일관성, 복구 방안 등 리스크 및 대응책 추가
-- qmtl_architecture_nextgen.md에 모든 설계/예시/정책/코드/워크플로우 반영
-- todo.md, backlog.md, CHANGELOG.md 반영
-
-### [2025-05-17] Python version bump to 3.12
-- pyproject.toml의 requires-python 및 mypy python_version을 3.12로 상향
-- Python 3.12 가상환경 생성 및 모든 의존성 재설치
+- qmtl_architecture_nextgen.md, todo.md, backlog.md, README.md 등 관련 문서 일괄 반영

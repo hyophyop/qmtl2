@@ -5,6 +5,7 @@ QMTL은 실시간 파이프라인/노드 상태 변화 이벤트를 Pub/Sub(예:
 - Registry: 상태 변화 이벤트 발행/구독 API(`/v1/registry/events/node-status` 등), EventPublisher/EventSubscriber 서비스 제공
 - Orchestrator: 이벤트 구독 클라이언트(EventClient) 및 대시보드/알림 시스템 연동 샘플 제공
 - 모든 이벤트/상태/알림 모델은 Pydantic v2 스타일(`models/event.py`)로 정의
+- 데이터 계약, API, 이벤트, 테스트 등은 protobuf 스키마를 단일 진실 소스로 관리하며, 서비스 간 데이터 교환은 protobuf 직렬화/역직렬화(SerializeToString/FromString) 방식이 표준입니다.
 - 단위 테스트 및 모킹 기반 검증(tests/unit/models/test_event.py 등)
 
 예시:
