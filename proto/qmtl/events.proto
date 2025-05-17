@@ -1,0 +1,30 @@
+syntax = "proto3";
+package qmtl;
+
+enum EventType {
+    NODE_STATUS = 0;
+    PIPELINE_STATUS = 1;
+    ALERT = 2;
+}
+
+message NodeStatusEvent {
+    EventType event_type = 1;
+    string node_id = 2;
+    string status = 3;
+    string timestamp = 4; // ISO 8601
+}
+
+message PipelineStatusEvent {
+    EventType event_type = 1;
+    string pipeline_id = 2;
+    string status = 3;
+    string timestamp = 4; // ISO 8601
+}
+
+message AlertEvent {
+    EventType event_type = 1;
+    string target_id = 2;
+    string level = 3;
+    string message = 4;
+    string timestamp = 5; // ISO 8601
+}

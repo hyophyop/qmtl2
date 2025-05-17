@@ -8,6 +8,15 @@ QMTL은 실시간 파이프라인/노드 상태 변화 이벤트를 Pub/Sub(예:
 - 데이터 계약, API, 이벤트, 테스트 등은 protobuf 스키마를 단일 진실 소스로 관리하며, 서비스 간 데이터 교환은 protobuf 직렬화/역직렬화(SerializeToString/FromString) 방식이 표준입니다.
 - 단위 테스트 및 모킹 기반 검증(tests/unit/models/test_event.py 등)
 
+### Protobuf round-trip 예시
+```python
+from qmtl.protobuf.qmtl import nodes_pb2
+node = nodes_pb2.DataNode(node_id="a"*32, data_format={"type": "csv"})
+raw = node.SerializeToString()
+node2 = nodes_pb2.DataNode.FromString(raw)
+assert node == node2
+```
+
 예시:
 ```python
 from qmtl.models.event import NodeStatusEvent
