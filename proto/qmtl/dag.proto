@@ -1,0 +1,14 @@
+syntax = "proto3";
+package qmtl;
+
+import "qmtl/nodes.proto";
+
+message DAGEdge {
+    string source = 1;
+    string target = 2;
+}
+
+message DAG {
+    repeated DataNode nodes = 1;
+    repeated DAGEdge edges = 2;
+}
