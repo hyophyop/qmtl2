@@ -9,7 +9,7 @@ COPY pyproject.toml ./
 COPY requirements.txt ./
 COPY src/ ./src/
 
-RUN uv venv create .venv && .venv/bin/uv pip install -e ./src
+RUN uv venv .venv && .venv/bin/uv pip install -e ./src
 
 ENV PYTHONPATH="/app/src"
 ENV PATH="/app/.venv/bin:$PATH"

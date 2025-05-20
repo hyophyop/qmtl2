@@ -2,7 +2,7 @@
 
 # Python 환경 설정
 venv:
-	uv venv create .venv
+	uv venv .venv
 
 install:
 	uv pip install -e .

@@ -14,7 +14,7 @@ fi
 
 # Create venv and install project dependencies including dev extras
 if [ ! -d ".venv" ]; then
-    uv venv create .venv
+    uv venv .venv
 fi
 uv pip install -e ".[dev]"
 

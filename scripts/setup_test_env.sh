@@ -15,7 +15,7 @@ fi
 
 # dev/test 환경을 위해 dev extras까지 설치
 if [ ! -d ".venv" ]; then
-  uv venv create .venv
+  uv venv .venv
 fi
 uv pip install -e .[dev]
 
