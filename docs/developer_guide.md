@@ -1,3 +1,4 @@
+````markdown
 ### Neo4j DI/테스트 환경 정책 (FIXTURE-REGISTRY-ORCH)
 
 - 서비스/핸들러/DI에서는 반드시 `Neo4jClient` 인스턴스만 주입해야 하며, `Neo4jConnectionPool` 자체를 직접 주입하지 않는다.
@@ -297,4 +298,10 @@ messages = await client.consume("my-topic", group_id="my-group", timeout=10)
 - [사용자 가이드](./user_guide.md)
 - [SDK 가이드](./sdk_guide.md)
 - [분석기 가이드](./analyzer_guide.md)
-- [API 문서](./generated/api.md) 
+- [API 문서](./generated/api.md)
+
+## [2025-05-18] NG-4: 데이터 교환 정책 변경
+- 모든 서비스/테스트/브로커/이벤트/콜백 계층에서 protobuf 메시지(SerializeToString/FromString) 기반 데이터 교환을 표준으로 사용합니다.
+- Pydantic/JSON 직렬화는 완전히 제거되었습니다.
+- protobuf 메시지 예시, 직렬화/역직렬화 방법, 주요 정책은 tests/README.md 및 예제 코드를 참고하세요.
+````

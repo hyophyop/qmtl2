@@ -216,3 +216,31 @@ class StateManager:
         except Exception as e:
             logging.error(f"데이터 삭제 중 오류 발생: {e}")
             return 0
+
+    def exists(self, key: str) -> bool:
+        """지정한 키가 Redis에 존재하는지 여부 반환"""
+        try:
+            return self.redis.exists(key) > 0
+        except Exception as e:
+            logging.error(f"Redis exists 확인 중 오류 발생: {e}")
+            return False
+
+    def keys(self, pattern: str = "*") -> list[str]:
+        """패턴에 매칭되는 모든 키 목록 반환 (str 리스트)"""
+        try:
+            keys = self.redis.keys(pattern)
+            return [k.decode() if isinstance(k, bytes) else k for k in keys]
+        except Exception as e:
+            logging.error(f"Redis keys 조회 중 오류 발생: {e}")
+            return []
+
+    def clear(self) -> int:
+        """모든 Redis 키를 삭제합니다 (테스트 및 관리용)."""
+        try:
+            keys = self.redis.keys("*")
+            if not keys:
+                return 0
+            return self.redis.delete(*keys)
+        except Exception as e:
+            logging.error(f"Redis 전체 삭제(clear) 중 오류 발생: {e}")
+            return 0

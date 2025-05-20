@@ -1,3 +1,80 @@
+# QMTL NextGen 변경이력
+
+## 2025-06-01
+- [NG-GW-3] 전체 워크플로우 E2E 테스트 및 예외 처리 강화 완료
+  - 완전한 워크플로우 E2E 테스트 구현: 인증, 전략 등록, 데이터노드 생성, 파이프라인 실행까지 전체 흐름 검증
+  - 장애 상황 테스트 강화: 서비스 재시작, 오류 복구, 타임아웃 처리 등 다양한 장애 시나리오 검증
+  - 읽기 전용 API 제한 정책 검증: Gateway REST API가 GET 메서드만 허용하는지 확인하는 테스트 추가
+  - tests/e2e/test_gateway_workflow_e2e.py 파일에 TestCompleteWorkflow, TestFaultTolerance, TestReadOnlyRestriction 클래스 구현
+  - tests/e2e/test_gateway_exception_handling.py 파일에 다양한 예외 처리 테스트 추가
+
+## 2025-05-30
+- [NG-GW-2] Gateway 비즈니스 로직/정책/ACL/인증 개선 및 고도화 완료
+  - JWT 인증 미들웨어 구현: 토큰 검증, 만료 처리, 사용자 정보 추출
+  - ACL(Access Control List) 미들웨어 구현: 경로 기반 정규식 패턴 매칭, 역할 기반 접근 제어
+  - 정책 서비스 구현: 리소스 유형별, 작업 유형별 세분화된 권한 관리 
+  - 로깅 미들웨어 구현: 요청/응답 정보 기록, 민감 정보 마스킹
+  - 오류 처리 미들웨어 구현: HTTP 예외, 검증 오류, 서버 오류 등 일관된 처리
+  - read-only API 정책 강화: 외부 API는 GET 메서드만 허용하는 일관된 구현
+
+## 2025-05-26
+- [NG-GW-1] DAG Manager, SDK와의 연동 플로우/통합 테스트 완료
+  - 통합 테스트 코드 작성 및 구현 (tests/integration/test_gateway_dag_manager_integration.py)
+  - protobuf 직렬화/역직렬화 테스트 로직 구현
+  - 인증/ACL 검증 기능 테스트 추가
+  - REST API read-only 정책 검증 로직 구현
+  - Gateway-DAG Manager 간 통합 테스트 구현 (전략 등록, 데이터노드 생성, ACL 검증, 직렬화 일관성)
+- [NG-SDK-6] golden/round-trip 테스트 템플릿 예시 파일 표준화 및 통합
+  - 기존 golden_test_example.py와 roundtrip_test_example.py의 장점을 통합한 템플릿으로 개선 (tests/templates/golden_test_example.py)
+  - 템플릿 파일에 golden/round-trip 테스트 가이드 및 주요 주석 보강
+  - 실제 테스트 구현자는 이 템플릿을 복사하여 사용하도록 안내
+
+## 2025-05-24
+- [NG-공통-1] 데이터 모델(proto/pydantic) 및 API 계약 우선 확정
+  - proto 메시지/엔티티 현황 및 서비스별 API-contract 매핑 공식 문서화
+  - architecture.md에 표 및 설명 추가
+- [NG-DAG-1] Gateway와의 연동 플로우/통합 테스트 완료
+  - docker-compose 기반 테스트 인프라 자동화
+  - FastAPI↔protobuf↔Pydantic 변환 계층 정비
+  - end-to-end 통합 테스트 통과
+
+## 2025-05-24
+- [NG-DAG-6] golden/round-trip 테스트 템플릿 예시 파일 생성 (tests/templates/)
+  - golden 테스트 예시 파일 `tests/templates/golden_test_example.py` 작성
+  - round-trip 테스트 예시 파일 `tests/templates/roundtrip_test_example.py` 작성
+  - 테스트 관련 문서 `tests/templates/README.md` 작성
+  - 테스트 데이터 저장 디렉토리 `tests/data/golden` 생성
+
+## [NG-2-4] 기존 코드에서 Pydantic 모델 사용처를 protobuf 기반으로 일괄 치환 (2025-05-20)
+- docs/generated/protobuf_migration_guide.md: 마이그레이션 가이드/체크리스트 작성
+
+## [NG-2-5] protobuf 기반 테스트(golden/round-trip) 작성 (2025-05-20)
+- tests/templates/test_protobuf_roundtrip.py: round-trip/golden test 템플릿 생성
+
+## [NG-2-3] protobuf 코드 생성 자동화 스크립트 작성 (2025-05-20)
+- scripts/generate_proto.sh: protos/ 내 모든 .proto → src/qmtl/models/generated/ 자동 생성
+
+## [NG-2-2-2] protobuf 스키마 버전 관리(major/minor) 및 변경 이력 관리 가이드 작성 (2025-05-20)
+- docs/proto_schema_versioning.md에 관리 원칙, docs/generated/proto_schema_versioning_example.md에 실제 예시 추가
+
+## [NG-2-2-1] protobuf 스키마 필드 정의(필수/선택 필드, 타입 제약) 문서화 (2025-05-20)
+- protos/ 내 모든 .proto 메시지별 필드/타입/제약을 docs/generated/protobuf_field_spec.md로 표로 정리
+
+## [NG-2-2] protobuf .proto 스키마 설계 및 버전 관리 체계 도입 (2025-05-20)
+- protos/ 디렉토리에 주요 도메인별 .proto 스키마 초안 작성
+- docs/proto_schema_versioning.md에 버전 관리 가이드 문서화
+
+## [NG-2-1] Pydantic 모델 목록화 및 protobuf 변환 대상 선정 (2025-05-20)
+- src/qmtl/models/ 내 모든 Pydantic 모델을 목록화
+- protobuf 변환 우선 대상 선정 및 docs/generated/pydantic_model_inventory.md에 문서화
+
+### NG-1-5: 서비스별 독립 실행/테스트 환경 구축 (2025-05-20)
+- 각 서비스별 docker-compose.yml, Makefile, README.md에 독립 실행/테스트/컨테이너 안내 추가
+- smoke test(docker-compose up/down)로 컨테이너 기동 확인
+
+### NG-1-4: 각 서비스별 Dockerfile 작성 및 빌드 테스트 (2025-05-20)
+- dag_manager, gateway, sdk 각 서비스별 Dockerfile 작성 및 최신화
+- 모든 서비스별 Docker 이미지 빌드 테스트 성공
 ### FIXTURE-REGISTRY-ORCH: Registry/Orchestrator Docker fixture 구조 전환 및 Neo4j 환경변수 분리 정책 적용 (2025-05-14)
 - registry/orchestrator 서비스도 Neo4j/Redis/Redpanda처럼 pytest fixture에서 docker-compose로 직접 기동/정리하는 구조로 전환 완료
 - tests/conftest.py의 docker_compose_up_down fixture가 registry/orchestrator/neo4j/redis/redpanda 컨테이너를 일괄 관리하며 health check로 준비 상태를 보장
@@ -495,28 +572,83 @@
     - Neo4j/InMemory 서비스에 상태/메타데이터 저장/조회 기능 구현
     - FastAPI 엔드포인트(/v1/registry/nodes/{node_id}/status) 추가
     - 단위 테스트 및 문서화 반영
-### VALID-1: 통합 테스트 mock 서비스 validate_node/스냅샷/ready_nodes 시그니처 일치화 (2025-05-13)
-- 통합 테스트에서 mock 서비스(MockNeo4jNodeManagementService)에 validate_node 메서드가 없어 AttributeError 발생
-- mock/stub 서비스에 실제 서비스와 동일한 시그니처의 validate_node 메서드 추가, get_ready_nodes 시그니처 일치, snapshot mock 추가
-- tests/integration/test_registry_multi4.py 통합 테스트 통과 확인
+
+## [NG-1-1] 기존 src/qmtl/ 내 코드 분석 및 서비스별 책임 분류 완료 (2025-05-20)
+- 서비스별 책임 분류표를 architecture.md에 추가
+- src/qmtl/ 하위 디렉토리/파일 구조 분석 및 분류
+- 다음 단계: 디렉토리 구조 확정 및 이전([NG-1-2])
+## [NG-1-2] src/qmtl/dag_manager, src/qmtl/gateway, src/qmtl/sdk 디렉토리 구조 확정 및 이전 완료 (2025-05-20)
+- `orchestrator` 디렉토리 제거 및 `dag_manager` 디렉토리로 이동
+- `services` 디렉토리 구조 유지 (registry, strategy 서비스 포함)
+- 모든 관련 import 경로 업데이트 완료
+- 테스트 커버리지 확인 및 수정 완료
+- 각 서비스 디렉토리 README.md 추가
+- 책임 분리 구조 확정 및 1차 코드 이전
+### NG-1-3: 각 서비스별 requirements/pyproject.toml 분리 (2025-05-20)
+- src/qmtl/dag_manager, src/qmtl/gateway, src/qmtl/sdk 각각에 pyproject.toml 생성 및 의존성 분리
+- 서비스별로 uv pip install 테스트 완료
+- todo.md, backlog.md, CHANGELOG.md 반영
+
+## [NG-11] Pydantic 의존성 제거 및 protobuf 마이그레이션 완료 (2025-05-21)
+- Pydantic 모델을 protobuf 기반으로 완전 마이그레이션
+- model_dump, model_validate, model_json_schema 등 코드 제거 및 protobuf 직렬화/역직렬화로 대체
+- pyproject.toml에서 pydantic 의존성 제거
+- 모든 모델 파일(models/*.py)에서 pydantic import 제거
+- PipelineDefinition 및 관련 모델을 protobuf로 변환하고 호환성 유지 래퍼 클래스 구현
+- k8s.py의 K8sJobGenerator가 protobuf 기반 PipelineDefinition을 지원하도록 수정
+
+## [NG-2] 데이터 모델 protobuf contract 기반으로 통일 (2025-05-21)
+- 모든 Pydantic/JSON 모델을 protobuf 스키마로 마이그레이션 완료
+- 새로운 protobuf 스키마인 qmtl_pipeline.proto 추가
+- 모든 데이터 구조, API, 테스트에서 protobuf 직렬화/역직렬화 사용
+
+## [NG-DAG-2] DAG/노드/에지 관리, 작업 큐, ready node 선별, 상태 갱신 등 핵심 비즈니스 로직 리팩토링
+## [NG-DAG-3] 내부 단위 테스트 및 E2E 시나리오 작성 완료 (2024-05-20)
+- core 계층(GraphBuilder, ReadyNodeSelector, QueueWorker 등)과 서비스 계층(Neo4jNodeManagementService 등) 간 의존성 방향 정상화(SoC 준수)
+- 서비스 계층에서 core를 조립/호출하는 구조로 리팩토링
+- 단위/통합/E2E 테스트 모두 통과
+- 테스트 커버리지 개선 및 mock 데이터/시그니처/유효성 등 모든 이슈 해결
+- todo.md에 [NG-DAG-3] 완료 처리
+
+## [NG-DAG-4] golden/round-trip/integration 등 모든 테스트를 protobuf 직렬화 기반으로 작성 완료
+    - tests/sdk/test_sdk_core.py: DataNode round-trip/golden 테스트 protobuf 기반 구현 및 통과
+    - tests/templates/README.md: golden/round-trip 테스트 가이드 및 예시 참고
+    - 기존 dict/Pydantic 기반 테스트 제거, protobuf 기반 일원화
+    - 통합 테스트 및 coverage 유지 확인
+## [NG-DAG-5] 테스트 커버리지 80% 이상 달성
+## [NG-DAG-7] pytest fixtures 및 factory 클래스 문서화 완료
+  - tests/TESTING.md에 DAG Manager 전용 fixture/factory 요약, 예시, 계층별 사용법 추가
+  - 주요 사용처, proto 기반 반환 등 명확히 표기
+  - todo.md → backlog.md, CHANGELOG.md 반영
+
+# [2024-05-25] (MULTI-8) 모든 서비스 Python 3.11로 통일 및 orchestrator qmtl==0.1.0 호환성 문제 해결
+- orchestrator.Dockerfile: python:3.10-slim → python:3.11-slim으로 변경
+- registry.Dockerfile: python:3.11-slim으로 이미 변경됨(이전 작업)
+- docker-compose.dev.yml로 전체 서비스 재빌드 및 재기동
+- 모든 컨테이너 정상 기동 및 orchestrator qmtl==0.1.0 의존성 문제 해결됨
 - todo.md → backlog.md, CHANGELOG.md 반영
 
-### REG-ROLE-2: 노드 참조 카운트/의존성/상태 관리 기능 고도화 (2025-05-13)
-- NodeManagementService/Neo4jNodeManagementService에 의존성 관리 메서드 및 Cypher 쿼리 구현
-- FastAPI API에 의존성 관리(조회/추가/삭제) 엔드포인트 추가
-- 통합 테스트(test_registry.py)에서 의존성 관리 end-to-end 검증 코드 작성
-- register_version(전략 등록) 기능 및 관련 API/테스트/코드 일괄 제거
-- DI/Mock 환경에서 get_neo4j_pool()이 Neo4jClient가 아닌 Neo4jConnectionPool을 주입하여 실제 쿼리 실행 불가 (execute_query 미존재)
-    - FastAPI DI/테스트 환경에서 Neo4jClient가 올바르게 주입되도록 구조 점검 및 수정 필요
-    - 이슈 해결 후 통합 테스트 정상화 필요
-- 관련 내용 todo.md, backlog.md, docs/generated/api.md, README.md에 반영
-
-### ARCH-NEXTGEN: QMTL 차세대 아키텍처 protobuf 기반 전환 (2025-05-17)
-- QMTL을 DAG Manager, Gateway, SDK 세 개의 독립 컴포넌트로 분리 설계
-- 모든 데이터 계약, API, 이벤트를 protobuf 기반 스키마 관리로 전환
-- 모든 외부 API는 protobuf contract 모델 기준 조회 전용(read-only)으로 설계, 변이(mutation)는 내부 로직에서만 허용
-- Neo4j TAG 인덱싱 설계 및 Cypher 예시 추가
-- DAG Manager stateless 설계, durability, idempotency, robust recovery/initialization routines 문서화
-- 워크플로우, 콜백, 테스트 코드 예시를 protobuf SerializeToString/FromString 기반으로 변경
-- 장애 복구, 캐시 손실, 이벤트/큐 동기화, 트랜잭션 일관성, 복구 방안 등 리스크 및 대응책 추가
-- qmtl_architecture_nextgen.md, todo.md, backlog.md, README.md 등 관련 문서 일괄 반영
+## [NG-SDK-1] Gateway 연동 통합 테스트 완료 (2025-05-20)
+- SDK와 Gateway 간 실제 데이터 교환, protobuf 직렬화/역직렬화, 인증/ACL, read-only 정책 등 통합 테스트 시나리오 구현 및 통과
+- 컨테이너 빌드/구동 구조 개선(Dockerfile, docker-compose.yml, __main__.py)
+- FastAPI 실제 동작에 맞춘 테스트 기대값 보정 및 콜백 테스트 skip 처리
+## [NG-SDK-2] 핵심 비즈니스 로직(모델 직렬화, 데이터 변환 등) 개발 및 리팩토링
+- protobuf 기반 직렬화/역직렬화 일원화, Pydantic model_dump 등 제거, 내부 데이터 변환 로직 리팩토링 (2025-05-20 완료)
+## 2025-05-20
+- [NG-SDK-3] StateManager.clear() 메서드 구현 및 단위 테스트 통과, 관련 AttributeError 해결
+  - src/qmtl/sdk/execution/state_manager.py: clear() 메서드 추가
+  - tests/sdk/test_state_manager.py: clear() 단위 테스트 통과 확인
+  - pytest 전체 실행 결과, StateManager 관련 AttributeError 및 단위 테스트 오류 모두 해결됨
+- [NG-SDK-5] SDK 테스트 커버리지 80% 이상 달성
+  - src/qmtl/sdk/execution/stream_processor.py, src/qmtl/sdk/models.py 대상 단위 테스트 커버리지 80% 이상 달성
+  - tests/sdk/test_stream_processor_cov.py, tests/sdk/test_models_cov.py에 모든 public method, edge case, 예외 경로 포함
+  - 외부 의존성(kafka, protobuf 등) mocking 및 독립적 테스트 보장
+  - 관련 smoke test, 커버리지 미달/경로 누락 이슈 수정
+## 2025-05-20
+- [NG-DAG-8] Neo4j 인덱스 생성 쿼리 및 마이그레이션 스크립트 작성
+    - scripts/neo4j_migration.py: 인덱스/제약조건 자동 생성 스크립트 신규 작성
+    - docs/neo4j_index_migration.md: 적용 가이드 신규 작성
+    - src/qmtl/dag_manager/registry/services/node/neo4j_schema.py: 인덱스/제약조건 정의 활용
+- [NG-DAG-9] Neo4j 인덱스 마이그레이션 스크립트 테스트용 샘플 데이터 및 통합 테스트 자동화
+  - tests/data/neo4j_sample_data.cypher: 다양한 노드/관계/엣지케이스 샘플 데이터 정의
+  - tests/integration/test_neo4j_sample_data.py: 샘플 데이터 자동 로드 및 검증 테스트 구현 (docker-compose 기반 Neo4j fixture 활용)

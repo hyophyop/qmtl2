@@ -135,3 +135,10 @@ qnode = QueryNode(
 ---
 
 이 구조를 따르면, 실전 파이프라인/분석기/테스트 코드 모두에서 아키텍처 원칙과 일관성을 유지할 수 있습니다.
+
+### NG-SDK-2: SDK 핵심 비즈니스 로직 protobuf 기반 일원화 (2025-05-20)
+- SDK 내부 모델 직렬화/역직렬화/데이터 변환 로직을 protobuf 기반으로 일원화
+- Pydantic model_dump 등 제거, REST API 계층에만 Pydantic 모델 한정
+- dict/json 변환 대신 protobuf 메서드 사용
+- 테스트/팩토리도 protobuf 기반으로 전환
+- 관련 문서 및 가이드(개발자 가이드, 마이그레이션 가이드 등) 최신화 필요

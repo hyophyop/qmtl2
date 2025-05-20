@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  sdk:
+    build: .
+    image: qmtl-sdk:dev
+    container_name: qmtl-sdk
+    command: ["python3", "-m", "qmtl.sdk"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

@@ -1,0 +1,46 @@
+syntax = "proto3";
+package qmtl;
+
+// DataNode 관련 메시지 (v1.0.0)
+// 변경 이력: 최초 생성 2025-05-20
+
+import "qmtl_common.proto";
+
+message NodeStreamSettings {
+  map<string, IntervalSettings> intervals = 1;
+}
+
+message DataNode {
+  string node_id = 1;
+  string type = 2;
+  map<string, string> data_format = 3;
+  map<string, string> params = 4;
+  repeated string dependencies = 5;
+  optional int32 ttl = 6;
+  NodeTags tags = 7;
+  NodeStreamSettings stream_settings = 8;
+  IntervalSettings interval_settings = 9;
+}
+
+message TopoSortResult {
+  repeated string order = 1;
+  map<string, DataNode> node_map = 2;
+}
+
+message DAGNodeDependency {
+  string id = 1;
+  string type = 2;
+}
+
+message DAGNode {
+  string id = 1;
+  string type = 2;
+  repeated DAGNodeDependency dependencies = 3;
+  map<string, string> params = 4;
+  map<string, string> metadata = 5;
+}
+
+message DAGEdge {
+  string source = 1;
+  string target = 2;
+}

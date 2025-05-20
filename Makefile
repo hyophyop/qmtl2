@@ -64,3 +64,6 @@ docker-down:
 	docker-compose -f docker-compose.dev.yml down
 
 ci: test integration-test
+
+proto:
+	bash scripts/generate_proto.sh

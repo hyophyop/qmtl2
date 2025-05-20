@@ -1,20 +1,19 @@
-FROM python:3.10-slim
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim
+
+RUN pip install uv
 
 WORKDIR /app
 
-# Install uv tool and project dependencies
-RUN pip install uv
-COPY pyproject.toml .
-RUN uv pip install --system .
-
-# Copy source code
+COPY pyproject.toml ./
+COPY requirements.txt ./
 COPY src/ ./src/
 
-# Copy environment variables
-COPY .env .env
+RUN uv venv create .venv && .venv/bin/uv pip install -e ./src
 
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH="/app/src"
+ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8080
 
-CMD ["python", "-m", "uvicorn", "qmtl.orchestrator.api:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "qmtl.orchestrator.main:app", "--host", "0.0.0.0", "--port", "8080"]

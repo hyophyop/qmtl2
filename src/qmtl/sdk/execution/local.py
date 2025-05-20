@@ -2,7 +2,6 @@ import time
 from typing import Any, Dict, Optional
 
 from .base import BaseExecutionEngine
-from qmtl.sdk.models import IntervalEnum
 
 
 class LocalExecutionEngine(BaseExecutionEngine):
@@ -105,6 +104,10 @@ class LocalExecutionEngine(BaseExecutionEngine):
                     print(
                         f"노드 '{node_name}' 실행 완료 ({execution_time:.4f}초): {result_preview}"
                     )
+
+                # 노드 실행 후 총 경과 시간이 timeout을 초과했는지 최종 확인
+                if timeout and (time.time() - start_time > timeout):
+                    raise TimeoutError(f"파이프라인 실행 제한 시간 {timeout}초 초과")
 
             # 노드 결과 기록(모든 분기에서 단 한 번만)
             node_has_settings = bool(

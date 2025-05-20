@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package qmtl.events;
+
+// EventType enum
+enum EventType {
+    NODE_STATUS = 0;
+    PIPELINE_STATUS = 1;
+    ALERT = 2;
+}
+
+// NodeStatusEvent message
+message NodeStatusEvent {
+    EventType event_type = 1;
+    string node_id = 2;
+    string status = 3;
+    int64 timestamp = 4;
+    map<string, string> meta = 5;
+}
+
+// PipelineStatusEvent message
+message PipelineStatusEvent {
+    EventType event_type = 1;
+    string pipeline_id = 2;
+    string status = 3;
+    int64 timestamp = 4;
+    map<string, string> meta = 5;
+}
+
+// AlertEvent message
+message AlertEvent {
+    EventType event_type = 1;
+    string target_id = 2;
+    string level = 3;
+    string message = 4;
+    int64 timestamp = 5;
+    map<string, string> meta = 6;
+}

@@ -39,6 +39,24 @@ assert node_def.name == "A"
 - **Node**: 개별 연산 노드의 추상 클래스
 - **QueryNode**: 태그 기반 쿼리 노드 추상 클래스
 - **Analyzer**: 태그 기반 자동 분석기 파이프라인 추상 클래스 (QueryNode 기반 태그 매핑/실행, 분석 결과 캐싱/상태 관리)
+
+## 독립 실행/테스트 환경 안내
+
+### 로컬 가상환경 실행
+```sh
+make run
+```
+
+### 단위 테스트
+```sh
+make test
+```
+
+### 도커/컨테이너 실행 (smoke test)
+```sh
+docker-compose up --build -d
+docker-compose down
+```
 - **LocalExecutionEngine**: 로컬 환경에서 파이프라인을 순차적으로 실행하는 엔진
 - **ParallelExecutionEngine**: Kafka/Redpanda와 Redis를 활용한 분산 병렬 실행 엔진
 - **StateManager**: Redis 기반 상태 관리 클래스 (인터벌 데이터 저장 및 조회)
@@ -228,7 +246,7 @@ container.build_docker_image(context_dir=".", tag="my-strategy:latest")
 container.push_docker_image(tag="my-strategy:latest", registry="myrepo")
 ```
 
-- Dockerfile 템플릿은 Python 3.9-slim 기반, main.py 실행을 기본으로 합니다.
+- Dockerfile 템플릿은 Python 3.11-slim 기반, main.py 실행을 기본으로 합니다.
 - pyproject.toml/requirements.txt 자동 인식 및 설치 명령 삽입
 - 실제 빌드/푸시에는 Docker가 필요합니다.
 - 상세 옵션 및 확장은 container.py 소스 참고

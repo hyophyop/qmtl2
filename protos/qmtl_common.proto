@@ -1,0 +1,22 @@
+syntax = "proto3";
+package qmtl;
+
+// IntervalEnum
+enum IntervalEnum {
+  MINUTE = 0;
+  HOUR = 1;
+  DAY = 2;
+}
+
+// IntervalSettings
+message IntervalSettings {
+  IntervalEnum interval = 1;
+  int32 period = 2;
+  optional int32 max_history = 3;
+}
+
+// NodeTags
+message NodeTags {
+  repeated string predefined = 1;
+  repeated string custom = 2;
+}

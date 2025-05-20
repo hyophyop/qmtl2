@@ -1,4 +1,3 @@
-
 # [2025-05-14] (FIXTURE-REGISTRY-ORCH) Registry/Orchestrator 서비스도 Neo4j/Redis/Redpanda처럼 pytest fixture에서 docker-compose로 직접 기동/정리하는 구조로 전환 완료
 
 ## Registry/Orchestrator Docker fixture 구조 및 사용법
@@ -15,7 +14,7 @@
 - `docker_compose_up_down` fixture는 autouse가 아니므로, E2E/통합 테스트 파일/클래스/함수에 직접 마크해야 함.
 - fixture 분리 정책에 따라, 단위 테스트는 빠르고 독립적으로 실행되며, 통합/E2E 테스트는 실제 환경에서 신뢰성 있게 동작함.
 - 자세한 정책 및 예시는 `tests/conftest.py`와 각 테스트 파일 상단을 참고.
-# [2025-05-11] [FIXTURE-4] E2E 테스트에서 fixture-1,2,3의 목적에 맞는 session/module scope 분리 및 적용 검증: fixture 구조/네이밍/scope/주석/가이드 모두 가이드라인에 부합하며, E2E 테스트에서도 session-scoped fixture로 리소스 공유 및 데이터 일관성 구조가 보장됨. 추가 개선/리팩토링 불필요.
+# [2025-05-11] [FIXTURE-4] E2E 테스트에서 fixture-1,2,3의 목적에 맞는 session/module scope 분리 및 적용 검증: fixture 구조/네이밍/scope/주석/가이드라인에 부합하며, E2E 테스트에서도 session-scoped fixture로 리소스 공유 및 데이터 일관성 구조가 보장됨. 추가 개선/리팩토링 불필요.
 # QMTL 테스트 가이드
 
 ## 코드 스타일 및 Linter 규칙 강화 안내 (2025-05-11)
@@ -52,16 +51,7 @@ def test_redis_session_and_clean(redis_clean, redis_session):
 
 ### Neo4j 연동 테스트
 
-def test_neo4j_session_and_clean(neo4j_clean, neo4j_session):
-    """
-    [FIXTURE-2] 실제 Neo4j 컨테이너와 연동되는 기본 동작 테스트
-    """
-    neo4j_session.execute_query("CREATE (:TestNode {foo: 1})")
-    result = neo4j_session.execute_query("MATCH (n:TestNode) RETURN count(n) AS cnt")
-    assert result[0]["cnt"] == 1
-    # clean fixture가 동작하면 다음 테스트에서 DB가 비워짐을 보장
-
-```
+```python
 import pytest
 
 def test_neo4j_session_and_clean(neo4j_clean, neo4j_session):
@@ -97,3 +87,8 @@ def test_neo4j_session_and_clean(neo4j_clean, neo4j_session):
 - 모든 외부 리소스(Docker, DB 등)는 session-scoped fixture로 관리하며, 상태 초기화는 별도 clean fixture로 분리합니다.
 - fixture 네이밍 및 docstring은 일관성을 유지합니다.
 - 자세한 fixture 정의는 `tests/conftest.py`를 참고하세요.
+
+## [2025-05-18] NG-4: 테스트 데이터 교환 정책
+- 모든 테스트(unit, integration, e2e)는 protobuf 메시지(SerializeToString/FromString) 기반 데이터 교환을 사용합니다.
+- Pydantic/JSON 직렬화는 테스트 코드에서 완전히 제거되었습니다.
+- protobuf 기반 테스트 예시는 tests/integration/test_registry.py, tests/integration/test_callback.py를 참고하세요.

@@ -1,0 +1,33 @@
+[project]
+name = "qmtl-gateway"
+version = "0.1.0"
+description = "QMTL Gateway Service"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.100.0",
+    "starlette>=0.27.0",
+    "uvicorn>=0.22.0",
+    "httpx>=0.24.0",
+    "redis>=5.0.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "structlog>=23.1.0",
+    "requests>=2.31.0",
+    "protobuf>=4.25.0",
+    "python-jose>=3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.3.1",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "flake8>=6.1.0",
+    "black>=23.3.0",
+    "isort>=5.12.0",
+    "mypy>=1.4.1",
+    "testcontainers>=3.7.0",
+    "freezegun>=1.4.0",
+]
+
+[tool.uv]

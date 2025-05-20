@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  gateway:
+    build:
+      context: /Users/munseungjin/workspace/research/qmtl2
+      dockerfile: src/qmtl/gateway/Dockerfile
+    image: qmtl-gateway:dev
+    container_name: qmtl-gateway
+    command: ["python3", "-m", "qmtl.gateway"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

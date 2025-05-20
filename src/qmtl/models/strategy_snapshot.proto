@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+// NodeSnapshot: 스냅샷 시점의 노드 정보
+message NodeSnapshot {
+  string node_id = 1;
+  bytes data = 2; // DataNode 등 protobuf 직렬화 데이터 (nested message 가능)
+}
+
+// StrategySnapshot: 파이프라인별 DAG 스냅샷(버전별, 롤백/비교/재실행용)
+message StrategySnapshot {
+  string pipeline_id = 1;
+  int64 created_at = 2;
+  repeated NodeSnapshot nodes = 3;
+  repeated Edge edges = 4;
+  map<string, string> metadata = 5;
+}
+
+// Edge: DAG 엣지 정보
+message Edge {
+  string source = 1;
+  string target = 2;
+}

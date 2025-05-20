@@ -1,0 +1,52 @@
+syntax = "proto3";
+package qmtl;
+
+// PipelineDefinition 관련 메시지 (v1.0.0)
+// 변경 이력: 최초 생성
+
+import "qmtl_common.proto";
+import "qmtl_datanode.proto";
+import "qmtl_analyzer.proto";
+
+message NodeDefinition {
+  string name = 1;
+  repeated string tags = 2;
+  map<string, string> params = 3;
+  repeated string upstreams = 4;
+}
+
+message QueryNodeDefinition {
+  string name = 1;
+  repeated string tags = 2;
+  repeated string upstreams = 4;
+  repeated string key_params = 5;
+  repeated string query_tags = 7;
+  optional string interval = 8;
+  optional int32 period = 9;
+}
+
+message PipelineDefinition {
+  string name = 1;
+  repeated NodeDefinition nodes = 2;
+  repeated QueryNodeDefinition query_nodes = 3;
+  map<string, string> metadata = 4;
+}
+
+enum SelectorMode {
+  LIST = 0;
+  BATCH = 1;
+  RANDOM = 2;
+  FILTER = 3;
+}
+
+message QueryNodeResultSelector {
+  SelectorMode mode = 1;
+  optional int32 batch_size = 2;
+  optional int32 sample_size = 3;
+  map<string, string> filter_meta = 4;
+}
+
+// 노드별 인터벌/period 등 stream 설정 (SDK/파이프라인에서 사용)
+message NodeStreamSettings {
+  map<string, IntervalSettings> intervals = 1;
+}

@@ -9,7 +9,7 @@ from typing import Optional
 
 import redis
 
-from src.qmtl.models.config import RedisSettings
+from qmtl.models.config import RedisSettings
 
 
 class RedisClient:

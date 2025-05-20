@@ -9,6 +9,12 @@ from enum import Enum
 from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
+# [DEPRECATED] 이 파일의 Pydantic 모델은 protobuf(qmtl_events.proto) 기반으로 대체됩니다.
+# 서비스 코드에서는 반드시 generated/qmtl_events_pb2.py를 import하여 사용하세요.
+# 예시:
+#   from qmtl.models.generated import qmtl_events_pb2
+#   event = qmtl_events_pb2.NodeStatusEvent(...)
+
 class EventType(str, Enum):
     NODE_STATUS = "NODE_STATUS"
     PIPELINE_STATUS = "PIPELINE_STATUS"

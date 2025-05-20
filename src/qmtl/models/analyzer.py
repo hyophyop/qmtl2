@@ -1,42 +1,36 @@
-from typing import Any, Dict, List, Optional
+# Protobuf 기반 분석기 모델로 마이그레이션됨
+# 필요시 protos/analyzer.proto 및 generated 코드 import
+# from qmtl.models.generated import analyzer_pb2
 
-from pydantic import BaseModel, Field
+# 기존 Pydantic 모델은 모두 protobuf 메시지로 대체됨
 
+# 임시: AnalyzerResult 모킹 (실제 구현 필요)
+class AnalyzerResult:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-class AnalyzerDefinition(BaseModel):
-    """분석기 제출용 모델"""
+# 임시: AnalyzerActivateRequest 모킹 (실제 구현 필요)
+class AnalyzerActivateRequest:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-    name: str = Field(..., description="분석기 이름")
-    description: Optional[str] = Field(None, description="설명")
-    tags: List[str] = Field(default_factory=list, description="분석기 태그")
-    source: str = Field(..., description="분석기 소스 코드 (base64 또는 plain)")
-    parameters: Optional[Dict[str, Any]] = Field(default_factory=dict, description="추가 파라미터")
+# 임시: AnalyzerDefinition 모킹 (실제 구현 필요)
+class AnalyzerDefinition:
+    def __init__(self, name, description=None, tags=None, parameters=None):
+        self.name = name
+        self.description = description
+        self.tags = tags or []
+        self.parameters = parameters or {}
 
-
-class AnalyzerMetadata(BaseModel):
-    analyzer_id: str = Field(..., description="분석기 고유 ID")
-    name: str = Field(...)
-    description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
-    created_at: int = Field(..., description="생성 시각(UNIX timestamp)")
-    status: str = Field(..., description="상태 (REGISTERED/ACTIVE/INACTIVE)")
-    parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-
-class AnalyzerActivateRequest(BaseModel):
-    mode: str = Field(..., description="활성화 모드 (LIVE/DRYRUN 등)")
-    parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-
-class AnalyzerResult(BaseModel):
-    analyzer_id: str = Field(...)
-    result: Dict[str, Any] = Field(default_factory=dict)
-    generated_at: int = Field(..., description="결과 생성 시각(UNIX timestamp)")
-    status: str = Field(..., description="결과 상태 (SUCCESS/FAIL/IN_PROGRESS)")
-    error: Optional[str] = None
-
-
-model_config = {
-    "extra": "forbid",
-    "populate_by_name": True,
-}
+# 임시: AnalyzerMetadata 모킹 (실제 구현 필요)
+class AnalyzerMetadata:
+    def __init__(self, analyzer_id, name, description, tags, created_at, status, parameters):
+        self.analyzer_id = analyzer_id
+        self.name = name
+        self.description = description
+        self.tags = tags
+        self.created_at = created_at
+        self.status = status
+        self.parameters = parameters

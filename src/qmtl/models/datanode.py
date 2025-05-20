@@ -56,9 +56,14 @@ class IntervalSettings(BaseModel):
         interval = values.get("interval")
         if isinstance(interval, str):
             try:
-                values["interval"] = IntervalEnum(interval)
-            except ValueError:
-                raise ValueError(f"interval은 IntervalEnum 값이어야 합니다: {list(IntervalEnum)}")
+                values["interval"] = IntervalEnum[interval]
+            except (ValueError, KeyError):
+                try:
+                    values["interval"] = IntervalEnum(interval)
+                except ValueError:
+                    raise ValueError(
+                        f"interval은 IntervalEnum 값이어야 합니다: {list(IntervalEnum)}"
+                    )
         elif not isinstance(interval, IntervalEnum):
             raise ValueError("interval은 IntervalEnum 타입이어야 합니다.")
         period = values.get("period")

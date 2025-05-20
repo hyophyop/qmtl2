@@ -1,0 +1,38 @@
+syntax = "proto3";
+package qmtl;
+
+// Strategy 관련 메시지 (v1.0.0)
+// 변경 이력: 최초 생성 2025-05-20
+
+message StrategyMetadata {
+  optional string strategy_name = 1;
+  optional int64 submitted_at = 2;
+  optional string description = 3;
+  optional string author = 4;
+  repeated string tags = 5;
+  optional string version = 6;
+  optional string source = 7;
+  map<string, string> extra_data = 8;
+}
+
+message StrategyVersion {
+  string strategy_code = 1;
+  int64 created_at = 2;
+  StrategyMetadata metadata = 3;
+}
+
+message NodeSnapshot {
+  string node_id = 1;
+  map<string, string> data = 2;
+}
+
+message StrategySnapshot {
+  string pipeline_id = 1;
+  int64 created_at = 2;
+  repeated NodeSnapshot nodes = 3;
+  repeated DAGEdge edges = 4;
+  map<string, string> metadata = 5;
+}
+
+// DAGEdge는 datanode.proto에서 import
+import "qmtl_datanode.proto";

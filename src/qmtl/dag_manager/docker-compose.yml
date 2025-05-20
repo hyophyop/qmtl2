@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  dag_manager:
+    build: .
+    image: qmtl-dag-manager:dev
+    container_name: qmtl-dag-manager
+    command: ["python3", "-m", "qmtl.dag_manager"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

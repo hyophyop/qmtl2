@@ -7,18 +7,16 @@
 ######################################################################
 import os
 import sys
-if (
-    "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
-):
+import subprocess
+import time
+import pytest
+import redis
+import requests
+
+if "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv):
     # Only set for the test runner process (host), never for spawned containers
     os.environ["NEO4J_URI"] = "bolt://localhost:7687"
     os.environ["NEO4J_HOST"] = "localhost"
-import os
-import subprocess
-import time
-
-import pytest
-import redis
 
 REDPANDA_HOST = os.environ.get("REDPANDA_HOST", "localhost")
 REDPANDA_PORT = int(os.environ.get("REDPANDA_PORT", 9092))
@@ -42,8 +40,6 @@ def redpanda_session():
     up_cmd = ["docker-compose", "-f", compose_file, "up", "-d", service_name]
     subprocess.run(up_cmd, check=True)
     # Health check: admin HTTP 포트로 상태 확인
-    import requests
-
     admin_url = f"http://{REDPANDA_HOST}:{REDPANDA_ADMIN_PORT}/v1/status/ready"
     for _ in range(30):
         try:
@@ -75,13 +71,6 @@ def redpanda_clean(redpanda_session):
     yield
     # 테스트 후에도 필요시 토픽/데이터 정리 가능
 
-
-import os
-import subprocess
-import time
-
-import pytest
-import redis
 
 # Redis docker-compose 기반 테스트용 fixture (INTERVAL-3)
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
@@ -176,12 +165,12 @@ def neo4j_session():
         try:
             # 테스트 환경에서는 짧은 타임아웃 설정으로 Neo4j 클라이언트 생성
             client = Neo4jClient(
-                NEO4J_BOLT_URI, 
-                NEO4J_USER, 
+                NEO4J_BOLT_URI,
+                NEO4J_USER,
                 NEO4J_PASSWORD,
                 connection_timeout=3,  # 3초 (기본값보다 짧게)
                 max_transaction_retry_time=5000,  # 5초 (기본값보다 짧게)
-                connection_acquisition_timeout=5.0  # 5초 (기본값보다 짧게)
+                connection_acquisition_timeout=5.0,  # 5초 (기본값보다 짧게)
             )
             # 간단 쿼리로 연결 확인
             result = client.execute_query("RETURN 1 AS x")
@@ -333,10 +322,23 @@ def docker_compose_up_down():
         logger.info("Docker 컨테이너 정리 중...")
         # cleanup 단계에서 --remove-orphans, --timeout 추가로 컨테이너 정리 안정성 향상
         subprocess.run(["make", "docker-down"], check=True)
-        subprocess.run(["docker-compose", "-f", "docker-compose.dev.yml", "down", "--remove-orphans", "--timeout", "20"], check=False)
+        subprocess.run(
+            [
+                "docker-compose",
+                "-f",
+                "docker-compose.dev.yml",
+                "down",
+                "--remove-orphans",
+                "--timeout",
+                "20",
+            ],
+            check=False,
+        )
         logger.info("Docker 컨테이너 정리 완료. 포트 상태 확인:")
         try:
-            result = subprocess.run(["lsof", "-i", ":7687"], capture_output=True, text=True, check=False)
+            result = subprocess.run(
+                ["lsof", "-i", ":7687"], capture_output=True, text=True, check=False
+            )
             logger.info(result.stdout)
         except Exception as e:
             logger.warning(f"포트 상태 확인 실패: {str(e)}")
@@ -362,3 +364,191 @@ def check_mock_usage():
     mock_logger.info("Starting test with enhanced mock validation")
     yield
     mock_logger.info("Test completed with enhanced mock validation")
+
+
+GATEWAY_HOST = os.environ.get("GATEWAY_HOST", "localhost")
+GATEWAY_PORT = int(os.environ.get("GATEWAY_PORT", 8000))
+
+# Gateway test user credentials
+TEST_USERNAME = os.environ.get("TEST_USERNAME", "testuser")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "testpass")
+TEST_ACCESS_TOKEN = os.environ.get("TEST_ACCESS_TOKEN", "test_jwt_token")
+
+
+def _wait_for_gateway(host, port, timeout=30):
+    url = f"http://{host}:{port}/"
+    for _ in range(timeout):
+        try:
+            resp = requests.get(url, timeout=2)
+            if resp.status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(1)
+    return False
+
+
+@pytest.fixture(scope="session")
+def gateway_session():
+    """
+    [FIXTURE-GW] Session-scoped fixture for Gateway service (docker-compose 기반 자동화)
+    - docker-compose.dev.yml의 gateway 컨테이너를 기동/상태 체크 후 base_url 반환
+    - Neo4j/Redis와 동일하게 pytest에서 자동 관리
+    - 사용 예시:
+        def test_gateway(gateway_session):
+            url = f"{gateway_session}/api/v1/health"
+            resp = requests.get(url)
+            assert resp.status_code == 200
+    """
+    compose_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../docker-compose.dev.yml")
+    )
+    service_name = "gateway"
+    up_cmd = ["docker-compose", "-f", compose_file, "up", "-d", service_name]
+    subprocess.run(up_cmd, check=True)
+    _wait_for_gateway(GATEWAY_HOST, GATEWAY_PORT)
+    base_url = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}"
+    yield base_url
+    # (옵션) 테스트 종료 후 컨테이너 정리
+    # subprocess.run(["docker-compose", "-f", compose_file, "down"], check=True)
+
+
+# Gateway test fixtures
+@pytest.fixture(scope="module")
+def gateway_headers():
+    """Fixture that provides the default headers for Gateway API requests."""
+    return {
+        "Content-Type": "application/x-protobuf",
+        "Accept": "application/x-protobuf",
+        "Authorization": f"Bearer {TEST_ACCESS_TOKEN}",
+    }
+
+
+@pytest.fixture(scope="module")
+def gateway_auth_headers():
+    """Fixture that provides authentication headers for Gateway API requests."""
+    return {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
+
+
+@pytest.fixture(scope="module")
+def gateway_client(gateway_session):
+    """Fixture that provides a configured HTTP client for Gateway API requests."""
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+
+    session = requests.Session()
+
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST"],
+    )
+
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    return session
+
+
+@pytest.fixture(scope="module")
+def authenticated_gateway_client(gateway_client, gateway_session):
+    """Fixture that provides an authenticated HTTP client for Gateway API requests."""
+    # Perform authentication
+    auth_url = f"{gateway_session}/api/v1/auth/token"
+    auth_data = {"username": TEST_USERNAME, "password": TEST_PASSWORD}
+
+    # Get authentication token
+    response = gateway_client.post(
+        auth_url, data=auth_data, headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    response.raise_for_status()
+
+    # Extract token from response
+    token = response.json().get("access_token")
+
+    # Update session headers with the token
+    gateway_client.headers.update(
+        {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/x-protobuf",
+            "Accept": "application/x-protobuf",
+        }
+    )
+
+    return gateway_client
+
+
+@pytest.fixture(scope="function")
+def clean_gateway_state(gateway_client, gateway_session):
+    """Fixture that cleans up Gateway state before and after each test."""
+    # Cleanup before test
+    cleanup_urls = [
+        f"{gateway_session}/api/v1/test/cleanup",  # Example cleanup endpoint
+    ]
+
+    for url in cleanup_urls:
+        try:
+            gateway_client.post(url, timeout=5)
+        except Exception as e:
+            print(f"Warning: Failed to clean up Gateway state at {url}: {e}")
+
+    yield  # Test runs here
+
+    # Cleanup after test
+    for url in cleanup_urls:
+        try:
+            gateway_client.post(url, timeout=5)
+        except Exception as e:
+            print(f"Warning: Failed to clean up Gateway state at {url}: {e}")
+
+
+@pytest.fixture(scope="session")
+def gateway_dag_docker():
+    """
+    Gateway와 DAG Manager 컨테이너만 실행하는 docker fixture.
+    통합 테스트용으로 Registry와 Orchestrator 없이 테스트 가능합니다.
+    """
+    compose_file = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../docker-compose.dev.yml")
+    )
+
+    # Gateway와 DAG Manager 서비스 시작
+    services = ["gateway", "dag-manager"]
+    up_cmd = ["docker-compose", "-f", compose_file, "up", "-d"] + services
+
+    try:
+        logger.info("Gateway와 DAG Manager 서비스 시작 중...")
+        subprocess.run(up_cmd, check=True)
+
+        # Gateway 서비스가 준비될 때까지 대기
+        gateway_url = "http://localhost:8000"
+        gateway_ready = wait_for_service(
+            f"{gateway_url}/api/v1/health", service_name="Gateway", max_attempts=10, delay=3
+        )
+
+        # DAG Manager 서비스가 준비될 때까지 대기
+        dag_manager_url = "http://localhost:8001"
+        dag_manager_ready = wait_for_service(
+            f"{dag_manager_url}/api/v1/health", service_name="DAG Manager", max_attempts=10, delay=3
+        )
+
+        if not (gateway_ready and dag_manager_ready):
+            logger.error("Gateway 또는 DAG Manager 서비스 준비 실패!")
+            subprocess.run(["docker-compose", "-f", compose_file, "logs"], check=False)
+            pytest.fail("서비스가 준비되지 않았습니다. 통합 테스트를 진행할 수 없습니다.")
+
+        logger.info("Gateway와 DAG Manager 서비스 준비 완료. 테스트 시작.")
+        yield {"gateway_url": gateway_url, "dag_manager_url": dag_manager_url}
+
+    except Exception as e:
+        logger.error(f"Docker 컨테이너 실행 중 오류 발생: {str(e)}")
+        raise
+    finally:
+        logger.info("Docker 컨테이너 정리 중...")
+        down_cmd = ["docker-compose", "-f", compose_file, "down", "--remove-orphans"]
+        subprocess.run(down_cmd, check=False)
+        logger.info("Docker 컨테이너 정리 완료.")

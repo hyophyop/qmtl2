@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.21, pytest-8.3.5, pluggy-1.5.0
+rootdir: /Users/munseungjin/workspace/research/qmtl2
+configfile: pyproject.toml
+plugins: anyio-4.9.0, html-4.1.1, metadata-3.1.1, asyncio-0.26.0, cov-6.1.1
+asyncio: mode=strict, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 8 items
+
+src/qmtl/sdk/tests/integration/test_gateway_integration.py ....s...      [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.9/site-packages/_pytest/config/__init__.py:1441
+  /Users/munseungjin/workspace/research/qmtl2/.venv/lib/python3.9/site-packages/_pytest/config/__init__.py:1441: PytestConfigWarning: Unknown config option: fastapi
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+.venv/lib/python3.9/site-packages/_pytest/config/__init__.py:1441
+  /Users/munseungjin/workspace/research/qmtl2/.venv/lib/python3.9/site-packages/_pytest/config/__init__.py:1441: PytestConfigWarning: Unknown config option: starlette
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+src/qmtl/sdk/tests/integration/test_gateway_integration.py:6
+  /Users/munseungjin/workspace/research/qmtl2/src/qmtl/sdk/tests/integration/test_gateway_integration.py:6: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================== 7 passed, 1 skipped, 3 warnings in 1.90s ===================

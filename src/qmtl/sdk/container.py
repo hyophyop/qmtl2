@@ -8,7 +8,7 @@ QMTL SDK: Container build utility
 from pathlib import Path
 
 DOCKERFILE_TEMPLATE = """
-FROM python:3.9-slim
+FROM python:3.11-slim
 WORKDIR /app
 COPY . /app
 {dependency_install}

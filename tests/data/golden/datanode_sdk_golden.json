@@ -1,0 +1,18 @@
+{
+  "nodeId": "test_node_1",
+  "type": "RAW",
+  "tags": {
+    "predefined": [
+      "RAW",
+      "TEST"
+    ],
+    "custom": [
+      "sdk",
+      "golden"
+    ]
+  },
+  "intervalSettings": {
+    "period": 5,
+    "maxHistory": 100
+  }
+}

@@ -1,0 +1,44 @@
+syntax = "proto3";
+package qmtl;
+
+// Template 관련 메시지 (v1.0.0)
+// 변경 이력: 최초 생성 2025-05-20
+
+message TemplateMetadata {
+  string name = 1;
+  optional string description = 2;
+  string owner = 3;
+  bool is_public = 4;
+  repeated string tags = 5;
+  int64 created_at = 6;
+  optional int64 updated_at = 7;
+  map<string, string> extra = 8;
+}
+
+message NodeTemplate {
+  string template_id = 1;
+  string type = 2;
+  TemplateMetadata metadata = 3;
+  map<string, string> node = 4;
+}
+
+message StrategyTemplate {
+  string template_id = 1;
+  string type = 2;
+  TemplateMetadata metadata = 3;
+  map<string, string> strategy = 4;
+}
+
+message DAGTemplate {
+  string template_id = 1;
+  string type = 2;
+  TemplateMetadata metadata = 3;
+  map<string, string> dag = 4;
+}
+
+message TemplatePermission {
+  string template_id = 1;
+  string user_id = 2;
+  string level = 3;
+  int64 granted_at = 4;
+}

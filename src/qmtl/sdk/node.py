@@ -16,7 +16,12 @@ from qmtl.sdk.models import (
     IntervalSettings,
     NodeStreamSettings,
     QueryNodeResultSelector,
+    create_interval_settings,
+    create_node_stream_settings,
+    IntervalEnum,
 )
+from qmtl.models.generated import qmtl_pipeline_pb2
+
 
 
 class BaseNode(ABC):
@@ -119,7 +124,7 @@ class ProcessingNode(BaseNode):
                 upstream_qualnames.append(up)
         # 4. stream_settings
         if self.stream_settings:
-            stream_settings = self.stream_settings.model_dump()
+            stream_settings = self.stream_settings.to_dict()
         else:
             stream_settings = {}
         # 5. key_params 및 값
@@ -232,13 +237,16 @@ class ProcessingNode(BaseNode):
         return []
 
     def to_definition(self) -> Dict[str, Any]:
+        """
+        노드 정의를 protobuf 기반 dict로 반환 (Pydantic model_dump 제거)
+        """
         return {
             "name": self.name,
             "node_id": self.node_id,
             "tags": self.tags,
             "upstreams": self.upstreams,
             "key_params": self.key_params,
-            "stream_settings": self.stream_settings.model_dump() if self.stream_settings else {},
+            "stream_settings": self.stream_settings.to_proto() if self.stream_settings else {},
         }
 
     def __repr__(self) -> str:
@@ -291,13 +299,16 @@ class QueryNode(BaseNode):
         )
 
     def to_definition(self) -> Dict[str, Any]:
+        """
+        쿼리 노드 정의를 protobuf 기반 dict로 반환 (Pydantic model_dump 제거)
+        """
         return {
             "name": self.name,
             "node_id": self.node_id,
             "tags": self.tags,
             "upstreams": self.upstreams,
             "key_params": self.key_params,
-            "stream_settings": self.stream_settings.model_dump() if self.stream_settings else {},
+            "stream_settings": self.stream_settings.to_proto() if self.stream_settings else {},
             "interval": self.interval,
             "period": self.period,
             "query_tags": self.query_tags,
@@ -357,18 +368,24 @@ class SourceNode(BaseNode):
         return self.fn()
 
     def to_definition(self) -> dict:
+        """
+        소스 노드 정의를 protobuf 기반 dict로 반환 (Pydantic model_dump 제거)
+        """
         return {
             "name": self.name,
             "node_id": self.node_id,
             "tags": self.tags,
             "upstreams": self.upstreams,
             "key_params": self.key_params,
-            "stream_settings": self.stream_settings.model_dump() if self.stream_settings else {},
+            "stream_settings": self.stream_settings.to_proto() if self.stream_settings else {},
         }
 
 
+# Node/QueryNode alias for user-facing API compatibility
+Node = ProcessingNode
 __all__ = [
     "ProcessingNode",
+    "Node",
     "QueryNode",
     "SourceProcessor",
     "SourceNode",

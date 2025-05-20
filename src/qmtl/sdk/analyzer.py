@@ -30,6 +30,7 @@ class Analyzer(Pipeline):
         local: bool = True,
         registry_client=None,
         selectors: Optional[Dict[str, List["QueryNodeResultSelector"]]] = None,
+        inputs: Optional[dict] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         import time
@@ -52,7 +53,7 @@ class Analyzer(Pipeline):
                 node_results = {}
                 for node in matched_nodes:
                     try:
-                        node_result = node.execute()
+                        node_result = node.execute(inputs=inputs or {})
                         node_results[node.name] = node_result
                         analyzer_results.append(
                             AnalyzerResult(

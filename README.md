@@ -229,3 +229,8 @@ QMTL Registry는 전략 제출/변경 시점의 전체 DAG(노드/의존성/파�
 - 기존 도메인별 서비스(NodeManagementService, StrategyManagementService 등)는 MetadataService 내부에서만 DI/호출하며, 외부 계층(API, 테스트 등)에서는 직접 접근하지 않습니다.
 - API, 테스트, 문서 등 모든 계층에서 MetadataService만을 사용하도록 구조를 일원화하였습니다.
 - 예시는 tests/unit/registry/services/test_metadata_service.py, src/qmtl/registry/api.py 참조
+
+## [2025-05-18] NG-4: 데이터 교환 방식 변경 안내
+- QMTL의 콜백, 이벤트, 내부 서비스, 브로커, 테스트 등 모든 계층에서 데이터 교환은 protobuf 바이너리(SerializeToString/FromString) 방식으로 통일되었습니다.
+- Pydantic/JSON 직렬화는 완전히 제거되었으며, 모든 데이터 구조는 protobuf 메시지로 정의됩니다.
+- 자세한 예시와 사용법은 developer_guide.md, tests/README.md를 참고하세요.
