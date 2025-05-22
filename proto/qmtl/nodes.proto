@@ -1,0 +1,43 @@
+syntax = "proto3";
+package qmtl;
+
+enum NodeType {
+    RAW = 0;
+    CANDLE = 1;
+    FEATURE = 2;
+    ORDERBOOK = 3;
+    RISK = 4;
+    SIGNAL = 5;
+    ML_PRED = 6;
+    ANALYZER = 7;
+    CORRELATION = 8;
+    VOLATILITY = 9;
+    TREND = 10;
+    ANOMALY = 11;
+}
+
+message NodeTags {
+    repeated string predefined = 1;
+    repeated string custom = 2;
+}
+
+message IntervalSettings {
+    string interval = 1;
+    int32 period = 2;
+    int32 max_history = 3;
+}
+
+message NodeStreamSettings {
+    map<string, IntervalSettings> intervals = 1;
+}
+
+message DataNode {
+    string node_id = 1;
+    NodeType type = 2;
+    map<string, string> data_format = 3;
+    map<string, string> params = 4;
+    repeated string dependencies = 5;
+    int32 ttl = 6;
+    NodeTags tags = 7;
+    NodeStreamSettings stream_settings = 8;
+}
